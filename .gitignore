@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+src-tauri/target/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# local agent / editor
+.claude/
