@@ -42,7 +42,8 @@
 
 @theme {
   --font-mono: "iA Mono", ui-monospace, monospace;
-  --font-serif: "Reckless", ui-serif, Georgia, "Times New Roman", Times, serif;
+  /* --font-serif: "Reckless", ui-serif, Georgia, "Times New Roman", Times, serif; */
+  --font-serif: ui-serif, Georgia, "Times New Roman", Times, serif;
 
   --color-bg: #f2f0ed;
   --color-surface: #e8eed6;
@@ -71,7 +72,7 @@ html, body, #root {
 
 /* Baseline grid */
 body {
-  font-family: "Reckless", ui-serif, Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-serif);
   font-size: 13px;
   line-height: var(--baseline);
 }

@@ -289,11 +289,18 @@ export default function Sidebar({
   return (
     <div
       data-sidebar
-      data-tauri-drag-region
       className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl bg-sidebar-bg text-sidebar-text"
     >
-      <div data-tauri-drag-region className="flex flex-col gap-[6px] border-b border-border/30 p-[15px] pt-[25px]">
-        <SearchBar value={search} onChange={setSearch} onSubmit={() => setFocusedIndex(0)} />
+      <div className="flex flex-col gap-[6px] border-b border-border/30 p-[15px] pt-[25px]">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          onSubmit={() => setFocusedIndex(0)}
+          onArrowDown={() => {
+            onRequestFocus();
+            if (flatNodes.length > 0) setFocusedIndex(0);
+          }}
+        />
       </div>
       <div ref={containerRef} className="relative z-[2] mx-2 my-[7.5px] flex-1 overflow-y-auto rounded-lg">
         {flatNodes.length === 0 && (

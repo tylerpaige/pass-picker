@@ -164,84 +164,91 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen flex-col rounded-xl overflow-hidden bg-bg p-[15px] text-[13px] leading-[15px] text-text">
-      <EntryControlsBar title="Pass Picker" {...toolbarProps} />
+    <div className="flex h-screen flex-col overflow-hidden rounded-xl bg-bg text-[13px] leading-[15px] text-text">
+      <div data-tauri-drag-region className="drag-region h-6 shrink-0" />
+      <div className="flex min-h-0 flex-1 flex-col p-[15px] pt-[6px]">
+        <EntryControlsBar title="Pass Picker" {...toolbarProps} />
 
-      <div className="flex min-h-0 flex-1 gap-[15px] overflow-hidden">
-        <div className="flex h-full shrink-0">
-          <div
-            className="h-full min-h-0 overflow-hidden"
-            style={{ width: sidebarWidth }}
-          >
-            <Sidebar
-              entries={entries}
-              selected={selectedName()}
-              onSelect={(name) => {
-                setView({ kind: "view", name });
-                setFocusZone("main");
-              }}
-              focused={focusZone === "sidebar"}
-              onRequestFocus={() => setFocusZone("sidebar")}
+        <div className="flex min-h-0 flex-1 gap-[15px] overflow-hidden">
+          <div className="flex h-full shrink-0">
+            <div
+              className="h-full min-h-0 overflow-hidden"
+              style={{ width: sidebarWidth }}
+            >
+              <Sidebar
+                entries={entries}
+                selected={selectedName()}
+                onSelect={(name) => {
+                  setView({ kind: "view", name });
+                  setFocusZone("main");
+                }}
+                focused={focusZone === "sidebar"}
+                onRequestFocus={() => setFocusZone("sidebar")}
+              />
+            </div>
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize sidebar"
+              className="w-1.5 shrink-0 cursor-col-resize self-stretch rounded-full hover:bg-border/40"
+              onMouseDown={handleSidebarResizeStart}
             />
           </div>
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize sidebar"
-            className="w-1.5 shrink-0 cursor-col-resize self-stretch rounded-full hover:bg-border/40"
-            onMouseDown={handleSidebarResizeStart}
-          />
-        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {error && (
-            <div className="p-[15px] text-xs text-danger">{error}</div>
-          )}
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {error && (
+              <div className="p-[15px] text-xs text-danger">{error}</div>
+            )}
 
-          {view.kind === "empty" && (
-            <div className="flex flex-1 items-center justify-center text-sm text-dim">
-              Select an entry to view
-            </div>
-          )}
+            {view.kind === "empty" && (
+              <div className="flex flex-1 items-center justify-center text-sm text-dim">
+                Select an entry to view
+              </div>
+            )}
 
-          {view.kind === "view" && (
-            <EntryView
-              key={view.name}
-              entryName={view.name}
-              onRenamed={(newName) => {
-                gitPush().catch(() => {});
-                loadEntries();
-                setView({ kind: "view", name: newName });
-              }}
-              focused={focusZone === "main"}
-            />
-          )}
+            {view.kind === "view" && (
+              <EntryView
+                key={view.name}
+                entryName={view.name}
+                onRenamed={(newName) => {
+                  gitPush().catch(() => {});
+                  loadEntries();
+                  setView({ kind: "view", name: newName });
+                }}
+                focused={focusZone === "main"}
+                onRequestEdit={() => {
+                  setView({ kind: "edit", name: view.name });
+                  setFocusZone("main");
+                }}
+              />
+            )}
 
-          {view.kind === "edit" && (
-            <EntryEditor
-              key={`edit-${view.name}`}
-              entryName={view.name}
-              onSaved={(name) => {
-                gitPush().catch(() => {});
-                loadEntries();
-                setView({ kind: "view", name });
-              }}
-              onCancel={() => setView({ kind: "view", name: view.name })}
-            />
-          )}
+            {view.kind === "edit" && (
+              <EntryEditor
+                key={`edit-${view.name}`}
+                entryName={view.name}
+                onSaved={(name) => {
+                  gitPush().catch(() => {});
+                  loadEntries();
+                  setView({ kind: "view", name });
+                }}
+                onCancel={() => setView({ kind: "view", name: view.name })}
+              />
+            )}
 
-          {view.kind === "new" && (
-            <EntryEditor
-              key="new"
-              entryName={null}
-              onSaved={(name) => {
-                gitPush().catch(() => {});
-                loadEntries();
-                setView({ kind: "view", name });
-              }}
-              onCancel={() => setView({ kind: "empty" })}
-            />
-          )}
+            {view.kind === "new" && (
+              <EntryEditor
+                key="new"
+                entryName={null}
+                onSaved={(name) => {
+                  gitPush().catch(() => {});
+                  loadEntries();
+                  setView({ kind: "view", name });
+                }}
+                onCancel={() => setView({ kind: "empty" })}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

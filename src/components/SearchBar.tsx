@@ -4,9 +4,15 @@ interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit?: () => void;
+  onArrowDown?: () => void;
 }
 
-export default function SearchBar({ value, onChange, onSubmit }: SearchBarProps) {
+export default function SearchBar({
+  value,
+  onChange,
+  onSubmit,
+  onArrowDown,
+}: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,6 +42,13 @@ export default function SearchBar({ value, onChange, onSubmit }: SearchBarProps)
       placeholder="Search... (Cmd+K)"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          inputRef.current?.blur();
+          onArrowDown?.();
+        }
+      }}
       className="w-full rounded border border-sidebar-text/30 bg-black/20 px-[7.5px] py-[7.5px] font-mono text-xs text-sidebar-text outline-none placeholder:text-sidebar-text/50 focus:border-sidebar-text/60"
     />
   );

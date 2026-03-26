@@ -15,12 +15,14 @@ interface EntryViewProps {
   entryName: string;
   onRenamed: (newName: string) => void;
   focused: boolean;
+  onRequestEdit: () => void;
 }
 
 export default function EntryView({
   entryName,
   onRenamed,
   focused,
+  onRequestEdit,
 }: EntryViewProps) {
   const [entry, setEntry] = useState<ParsedEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,23 +115,49 @@ export default function EntryView({
     if (!focused || fields.length === 0) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (isEditingName) return;
+      if (isEditingName || showGenerator) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      switch (e.key) {
-        case "ArrowDown": {
-          e.preventDefault();
-          setFocusedFieldIndex((prev) => Math.min(prev + 1, fields.length - 1));
-          break;
-        }
-        case "ArrowUp": {
-          e.preventDefault();
-          setFocusedFieldIndex((prev) => Math.max(prev - 1, 0));
-          break;
-        }
-        case "Enter": {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedFieldIndex((prev) => Math.min(prev + 1, fields.length - 1));
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedFieldIndex((prev) => Math.max(prev - 1, 0));
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const field = fields[focusedFieldIndex];
+        if (field) handleCopy(field.key, field.value);
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      switch (key) {
+        case "c": {
           e.preventDefault();
           const field = fields[focusedFieldIndex];
           if (field) handleCopy(field.key, field.value);
+          break;
+        }
+        case "r": {
+          e.preventDefault();
+          setShowPassword(true);
+          break;
+        }
+        case "g": {
+          e.preventDefault();
+          setShowGenerator(true);
+          break;
+        }
+        case "e": {
+          e.preventDefault();
+          onRequestEdit();
           break;
         }
       }
@@ -137,7 +165,7 @@ export default function EntryView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focused, fields, focusedFieldIndex, isEditingName]);
+  }, [focused, fields, focusedFieldIndex, isEditingName, onRequestEdit, showGenerator]);
 
   const contentClass =
     "min-h-0 flex-1 overflow-y-auto rounded-xl bg-surface p-[30px]";
