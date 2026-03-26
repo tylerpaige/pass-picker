@@ -46,14 +46,17 @@ export default function EntryControlsBar({
   }
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-[7.5px] pt-[20px] pb-[10px]">
+    <div
+      data-tauri-drag-region
+      className="drag-region flex shrink-0 items-center justify-between gap-[7.5px] pt-[20px] pb-[10px]"
+    >
       <div
         data-tauri-drag-region
         className="min-w-0 flex-1 text-left text-3xl font-semibold tracking-narrow leading-tight text-neon"
       >
         {title}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-[2px]">
+      <div className="no-drag flex shrink-0 flex-wrap items-center justify-end gap-[2px]">
         <button
           type="button"
           className={btnBase}

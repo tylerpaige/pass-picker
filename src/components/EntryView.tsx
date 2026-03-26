@@ -1,8 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { getEntry, parseEntry, copyToClipboard, renameEntry } from "../lib/pass";
+import {
+  getEntry,
+  parseEntry,
+  copyToClipboard,
+  renameEntry,
+  editEntry,
+} from "../lib/pass";
 import type { ParsedEntry } from "../lib/pass";
 import { formatEntryPathTitle, titleCaseFieldLabel } from "../lib/strings";
 import OtpDisplay from "./OtpDisplay";
+import PasswordGenerator from "./PasswordGenerator";
 
 interface EntryViewProps {
   entryName: string;
@@ -25,6 +32,7 @@ export default function EntryView({
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(entryName);
+  const [showGenerator, setShowGenerator] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,6 +43,7 @@ export default function EntryView({
     setLoading(true);
     setError(null);
     setShowPassword(false);
+    setShowGenerator(false);
     setFocusedFieldIndex(0);
     getEntry(entryName)
       .then((raw) => {
@@ -153,7 +162,7 @@ export default function EntryView({
 
   return (
     <div className={contentClass}>
-      <div className="mb-[22px]">
+      <div className="mb-[26px]">
         {isEditingName ? (
           <input
             ref={nameInputRef}
@@ -171,11 +180,11 @@ export default function EntryView({
                 cancelRename();
               }
             }}
-            className="w-full break-all border-b border-neon bg-transparent text-lg font-semibold leading-[30px] text-neon outline-none"
+            className="w-full break-all border-b border-neon bg-transparent text-[22px] font-semibold leading-[34px] text-neon font-mono outline-none"
           />
         ) : (
           <div
-            className="block w-full cursor-pointer break-all border-b border-transparent text-lg font-semibold leading-[30px] text-neon transition-colors hover:border-neon/30"
+            className="block w-full cursor-pointer break-all border-b border-transparent font-mono text-[22px] leading-[34px] text-neon transition-colors hover:border-neon/30"
             onClick={startEditingName}
             title="Click to rename"
           >
@@ -189,7 +198,7 @@ export default function EntryView({
           if (el) fieldRefs.current.set(0, el);
           else fieldRefs.current.delete(0);
         }}
-        className={`mb-[7.5px] flex items-center gap-[7.5px] rounded-md border border-datum-border bg-datum-bg px-[15px] py-[7.5px] ${
+        className={`mb-[10px] flex items-center gap-[10px] rounded-md border border-datum-border bg-datum-bg px-[18px] py-[10px] ${
           focused && focusedFieldIndex === 0 ? "ring-1 ring-neon" : ""
         }`}
       >
@@ -197,8 +206,19 @@ export default function EntryView({
           {titleCaseFieldLabel("password")}
         </span>
         <span className="flex-1 break-all font-mono text-base leading-[30px] tracking-widest text-text">
-          {showPassword ? entry.password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+          {showPassword
+            ? entry.password
+            : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
         </span>
+
+        <button
+          type="button"
+          className="rounded border border-datum-border bg-surface px-2 py-[3.75px] font-mono text-sm leading-[15px] text-text transition hover:bg-hover"
+          onClick={() => setShowGenerator(true)}
+          title="Regenerate password"
+        >
+          {"\u21BB"}
+        </button>
         <button
           className="rounded border border-datum-border bg-surface px-2 py-[3.75px] font-mono text-sm leading-[15px] text-text transition hover:bg-hover"
           onClick={() => setShowPassword(!showPassword)}
@@ -227,14 +247,18 @@ export default function EntryView({
               if (el) fieldRefs.current.set(fieldIndex, el);
               else fieldRefs.current.delete(fieldIndex);
             }}
-            className={`mb-[7.5px] flex items-center gap-[7.5px] rounded-md border border-datum-border bg-datum-bg px-[15px] py-[7.5px] ${
-              focused && focusedFieldIndex === fieldIndex ? "ring-1 ring-neon" : ""
+            className={`mb-[10px] flex items-center gap-[10px] rounded-md border border-datum-border bg-datum-bg px-[18px] py-[10px] ${
+              focused && focusedFieldIndex === fieldIndex
+                ? "ring-1 ring-neon"
+                : ""
             }`}
           >
             <span className="min-w-[80px] text-[11px] font-normal leading-tight tracking-wide text-dim">
               {titleCaseFieldLabel(key)}
             </span>
-            <span className="flex-1 break-all font-mono text-text leading-[15px]">{value}</span>
+            <span className="flex-1 break-all font-mono text-text leading-[15px]">
+              {value}
+            </span>
             <button
               className={`rounded border px-2 py-[3.75px] font-mono text-[11px] leading-[15px] transition ${
                 copiedField === key
@@ -250,6 +274,28 @@ export default function EntryView({
       })}
 
       <OtpDisplay entryName={entryName} />
+
+      {showGenerator && (
+        <PasswordGenerator
+          currentPassword={entry.password}
+          onApply={async (newPassword) => {
+            try {
+              const lines = entry.raw.split("\n");
+              lines[0] = newPassword;
+              const updatedRaw = lines.join("\n");
+              await editEntry(entryName, updatedRaw);
+              setEntry(parseEntry(updatedRaw));
+              setShowPassword(false);
+              setShowGenerator(false);
+              setError(null);
+            } catch (err) {
+              setError(String(err));
+              setShowGenerator(false);
+            }
+          }}
+          onCancel={() => setShowGenerator(false)}
+        />
+      )}
     </div>
   );
 }

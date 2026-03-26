@@ -76,6 +76,16 @@ body {
   line-height: var(--baseline);
 }
 
+/* Window drag helpers for Tauri custom titlebar */
+.drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
