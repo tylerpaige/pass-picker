@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import { listEntries, gitPull, gitPush } from "./lib/pass";
+import { useState, useEffect, useCallback, type MouseEvent as ReactMouseEvent } from "react";
+import { listEntries, gitPull, gitPush, deleteEntry } from "./lib/pass";
 import Sidebar from "./components/Sidebar";
 import EntryView from "./components/EntryView";
 import EntryEditor from "./components/EntryEditor";
+import EntryControlsBar from "./components/EntryControlsBar";
 
 type View =
   | { kind: "empty" }
@@ -12,11 +13,38 @@ type View =
 
 type FocusZone = "sidebar" | "main";
 
+const MIN_SIDEBAR = 200;
+const MAX_SIDEBAR = 560;
+
 export default function App() {
   const [entries, setEntries] = useState<string[]>([]);
   const [view, setView] = useState<View>({ kind: "empty" });
   const [error, setError] = useState<string | null>(null);
   const [focusZone, setFocusZone] = useState<FocusZone>("sidebar");
+  const [deleting, setDeleting] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+
+  // Default to a 50/50 split between Sidebar and EntryView.
+  // (We exclude the fixed gap + resize handle widths, and clamp to the allowed range.)
+  useEffect(() => {
+    const padding = 30; // root `p-[15px]` on both sides
+    const gap = 15; // main container `gap-[15px]`
+    const handle = 6; // `w-1.5` ≈ 6px
+
+    function computeDefaultWidth() {
+      const vw = window.innerWidth;
+      const inner = vw - padding;
+      const availableForPanels = inner - gap - handle;
+      const half = availableForPanels / 2;
+      const clamped = Math.round(
+        Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, half))
+      );
+      setSidebarWidth(clamped);
+    }
+
+    // Guard in case this ever renders in a non-browser context.
+    if (typeof window !== "undefined") computeDefaultWidth();
+  }, []);
 
   const loadEntries = useCallback(async () => {
     try {
@@ -33,26 +61,22 @@ export default function App() {
     loadEntries();
   }, [loadEntries]);
 
-  // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const meta = e.metaKey || e.ctrlKey;
 
-      // Cmd+Alt+Left → focus sidebar
       if (meta && e.altKey && e.key === "ArrowLeft") {
         e.preventDefault();
         setFocusZone("sidebar");
         return;
       }
 
-      // Cmd+Alt+Right → focus main
       if (meta && e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
         setFocusZone("main");
         return;
       }
 
-      // Cmd+N → new entry
       if (meta && e.key === "n") {
         e.preventDefault();
         setView({ kind: "new" });
@@ -60,7 +84,6 @@ export default function App() {
         return;
       }
 
-      // Cmd+E → edit current entry
       if (meta && e.key === "e") {
         e.preventDefault();
         setView((prev) => {
@@ -81,72 +104,145 @@ export default function App() {
     return null;
   }
 
+  const canNew =
+    view.kind === "empty" || view.kind === "view" || view.kind === "new";
+  const canEdit = view.kind === "view";
+  const canDelete = view.kind === "view";
+
+  async function handleDeleteCurrentEntry() {
+    if (!canDelete) return;
+    if (view.kind !== "view") return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteEntry(view.name);
+      gitPush().catch(() => {});
+      await loadEntries();
+      setView({ kind: "empty" });
+      setFocusZone("sidebar");
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function handleSidebarResizeStart(e: ReactMouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+
+    function onMove(ev: MouseEvent) {
+      const next = startW + ev.clientX - startX;
+      setSidebarWidth(Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, next)));
+    }
+
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
+  const toolbarProps = {
+    canNew,
+    canEdit,
+    canDelete,
+    isDeleting: deleting,
+    onNew: () => {
+      setView({ kind: "new" });
+      setFocusZone("main");
+    },
+    onEdit: () => {
+      if (view.kind !== "view") return;
+      setView({ kind: "edit", name: view.name });
+      setFocusZone("main");
+    },
+    onDelete: handleDeleteCurrentEntry,
+  };
+
   return (
-    <div className="flex h-screen rounded-xl overflow-hidden bg-bg font-mono text-[13px] leading-[15px] text-text">
-      <Sidebar
-        entries={entries}
-        selected={selectedName()}
-        onSelect={(name) => {
-          setView({ kind: "view", name });
-          setFocusZone("main");
-        }}
-        onNewEntry={() => setView({ kind: "new" })}
-        focused={focusZone === "sidebar"}
-        onRequestFocus={() => setFocusZone("sidebar")}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {error && <div className="p-[15px] text-xs text-danger">{error}</div>}
+    <div className="flex h-screen flex-col rounded-xl overflow-hidden bg-bg p-[15px] text-[13px] leading-[15px] text-text">
+      <EntryControlsBar title="Pass Picker" {...toolbarProps} />
 
-        {view.kind === "empty" && (
-          <div className="flex flex-1 items-center justify-center text-sm text-dim">
-            Select an entry to view
+      <div className="flex min-h-0 flex-1 gap-[15px] overflow-hidden">
+        <div className="flex h-full shrink-0">
+          <div
+            className="h-full min-h-0 overflow-hidden"
+            style={{ width: sidebarWidth }}
+          >
+            <Sidebar
+              entries={entries}
+              selected={selectedName()}
+              onSelect={(name) => {
+                setView({ kind: "view", name });
+                setFocusZone("main");
+              }}
+              focused={focusZone === "sidebar"}
+              onRequestFocus={() => setFocusZone("sidebar")}
+            />
           </div>
-        )}
-
-        {view.kind === "view" && (
-          <EntryView
-            key={view.name}
-            entryName={view.name}
-            onEdit={() => setView({ kind: "edit", name: view.name })}
-            onDeleted={() => {
-              gitPush().catch(() => {});
-              loadEntries();
-              setView({ kind: "empty" });
-            }}
-            onRenamed={(newName) => {
-              gitPush().catch(() => {});
-              loadEntries();
-              setView({ kind: "view", name: newName });
-            }}
-            focused={focusZone === "main"}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            className="w-1.5 shrink-0 cursor-col-resize self-stretch rounded-full hover:bg-border/40"
+            onMouseDown={handleSidebarResizeStart}
           />
-        )}
+        </div>
 
-        {view.kind === "edit" && (
-          <EntryEditor
-            key={`edit-${view.name}`}
-            entryName={view.name}
-            onSaved={(name) => {
-              gitPush().catch(() => {});
-              loadEntries();
-              setView({ kind: "view", name });
-            }}
-            onCancel={() => setView({ kind: "view", name: view.name })}
-          />
-        )}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {error && (
+            <div className="p-[15px] text-xs text-danger">{error}</div>
+          )}
 
-        {view.kind === "new" && (
-          <EntryEditor
-            key="new"
-            entryName={null}
-            onSaved={(name) => {
-              gitPush().catch(() => {});
-              loadEntries();
-              setView({ kind: "view", name });
-            }}
-            onCancel={() => setView({ kind: "empty" })}
-          />
-        )}
+          {view.kind === "empty" && (
+            <div className="flex flex-1 items-center justify-center text-sm text-dim">
+              Select an entry to view
+            </div>
+          )}
+
+          {view.kind === "view" && (
+            <EntryView
+              key={view.name}
+              entryName={view.name}
+              onRenamed={(newName) => {
+                gitPush().catch(() => {});
+                loadEntries();
+                setView({ kind: "view", name: newName });
+              }}
+              focused={focusZone === "main"}
+            />
+          )}
+
+          {view.kind === "edit" && (
+            <EntryEditor
+              key={`edit-${view.name}`}
+              entryName={view.name}
+              onSaved={(name) => {
+                gitPush().catch(() => {});
+                loadEntries();
+                setView({ kind: "view", name });
+              }}
+              onCancel={() => setView({ kind: "view", name: view.name })}
+            />
+          )}
+
+          {view.kind === "new" && (
+            <EntryEditor
+              key="new"
+              entryName={null}
+              onSaved={(name) => {
+                gitPush().catch(() => {});
+                loadEntries();
+                setView({ kind: "view", name });
+              }}
+              onCancel={() => setView({ kind: "empty" })}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

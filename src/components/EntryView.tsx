@@ -1,20 +1,17 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { getEntry, parseEntry, copyToClipboard, deleteEntry, renameEntry } from "../lib/pass";
+import { getEntry, parseEntry, copyToClipboard, renameEntry } from "../lib/pass";
 import type { ParsedEntry } from "../lib/pass";
+import { formatEntryPathTitle, titleCaseFieldLabel } from "../lib/strings";
 import OtpDisplay from "./OtpDisplay";
 
 interface EntryViewProps {
   entryName: string;
-  onEdit: () => void;
-  onDeleted: () => void;
   onRenamed: (newName: string) => void;
   focused: boolean;
 }
 
 export default function EntryView({
   entryName,
-  onEdit,
-  onDeleted,
   onRenamed,
   focused,
 }: EntryViewProps) {
@@ -23,20 +20,21 @@ export default function EntryView({
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [focusedFieldIndex, setFocusedFieldIndex] = useState(0);
   const fieldRefs = useRef<Map<number, HTMLElement>>(new Map());
 
-  // Editable name state
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(entryName);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setEditedName(entryName);
+  }, [entryName]);
+
+  useEffect(() => {
     setLoading(true);
     setError(null);
     setShowPassword(false);
-    setConfirmDelete(false);
     setFocusedFieldIndex(0);
     getEntry(entryName)
       .then((raw) => {
@@ -63,19 +61,6 @@ export default function EntryView({
     setTimeout(() => setCopiedField(null), 2000);
     if (field === "password") {
       setTimeout(() => copyToClipboard(""), 45000);
-    }
-  }
-
-  async function handleDelete() {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-    try {
-      await deleteEntry(entryName);
-      onDeleted();
-    } catch (err) {
-      setError(String(err));
     }
   }
 
@@ -108,7 +93,6 @@ export default function EntryView({
     setEditedName(entryName);
   }
 
-  // Auto-scroll focused field
   useEffect(() => {
     if (focused && focusedFieldIndex >= 0) {
       const el = fieldRefs.current.get(focusedFieldIndex);
@@ -116,12 +100,10 @@ export default function EntryView({
     }
   }, [focused, focusedFieldIndex]);
 
-  // Keyboard handler for field navigation
   useEffect(() => {
     if (!focused || fields.length === 0) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      // Don't intercept when editing name
       if (isEditingName) return;
 
       switch (e.key) {
@@ -148,13 +130,30 @@ export default function EntryView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focused, fields, focusedFieldIndex, isEditingName]);
 
-  if (loading) return <div className="p-[15px] text-xs text-dim">Decrypting...</div>;
-  if (error) return <div className="p-[15px] text-xs text-danger">{error}</div>;
+  const contentClass =
+    "min-h-0 flex-1 overflow-y-auto rounded-xl bg-surface p-[30px]";
+
+  if (loading) {
+    return (
+      <div className={contentClass}>
+        <div className="text-xs text-dim">Decrypting...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={contentClass}>
+        <div className="text-xs text-danger">{error}</div>
+      </div>
+    );
+  }
+
   if (!entry) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-surface rounded-xl p-[30px]">
-      <div className="mb-[15px] flex items-center justify-between">
+    <div className={contentClass}>
+      <div className="mb-[22px]">
         {isEditingName ? (
           <input
             ref={nameInputRef}
@@ -172,38 +171,19 @@ export default function EntryView({
                 cancelRename();
               }
             }}
-            className="break-all text-lg font-semibold text-neon bg-transparent border-b border-neon outline-none leading-[30px] flex-1 mr-[15px]"
+            className="w-full break-all border-b border-neon bg-transparent text-lg font-semibold leading-[30px] text-neon outline-none"
           />
         ) : (
           <div
-            className="break-all text-lg font-semibold text-neon cursor-pointer leading-[30px] hover:border-b hover:border-neon/30"
+            className="block w-full cursor-pointer break-all border-b border-transparent text-lg font-semibold leading-[30px] text-neon transition-colors hover:border-neon/30"
             onClick={startEditingName}
             title="Click to rename"
           >
-            {entryName}
+            {formatEntryPathTitle(entryName)}
           </div>
         )}
-        <div className="flex gap-[7.5px]">
-          <button
-            className="rounded border border-datum-border bg-datum-bg px-[7.5px] py-[7.5px] font-mono text-xs text-text transition hover:bg-hover"
-            onClick={onEdit}
-          >
-            Edit
-          </button>
-          <button
-            className={`rounded border px-[7.5px] py-[7.5px] font-mono text-xs transition ${
-              confirmDelete
-                ? "border-danger text-danger hover:bg-danger hover:text-bg"
-                : "border-datum-border bg-datum-bg text-text hover:bg-hover"
-            }`}
-            onClick={handleDelete}
-          >
-            {confirmDelete ? "Confirm Delete" : "Delete"}
-          </button>
-        </div>
       </div>
 
-      {/* Password field */}
       <div
         ref={(el) => {
           if (el) fieldRefs.current.set(0, el);
@@ -213,10 +193,10 @@ export default function EntryView({
           focused && focusedFieldIndex === 0 ? "ring-1 ring-neon" : ""
         }`}
       >
-        <span className="min-w-[80px] text-[11px] uppercase tracking-wide text-dim leading-[15px]">
-          Password
+        <span className="min-w-[80px] text-[11px] font-normal leading-tight tracking-wide text-dim">
+          {titleCaseFieldLabel("password")}
         </span>
-        <span className="flex-1 break-all text-base tracking-widest text-text leading-[30px]">
+        <span className="flex-1 break-all font-mono text-base leading-[30px] tracking-widest text-text">
           {showPassword ? entry.password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
         </span>
         <button
@@ -238,7 +218,6 @@ export default function EntryView({
         </button>
       </div>
 
-      {/* Other fields */}
       {Object.entries(entry.fields).map(([key, value], i) => {
         const fieldIndex = i + 1;
         return (
@@ -252,10 +231,10 @@ export default function EntryView({
               focused && focusedFieldIndex === fieldIndex ? "ring-1 ring-neon" : ""
             }`}
           >
-            <span className="min-w-[80px] text-[11px] uppercase tracking-wide text-dim leading-[15px]">
-              {key}
+            <span className="min-w-[80px] text-[11px] font-normal leading-tight tracking-wide text-dim">
+              {titleCaseFieldLabel(key)}
             </span>
-            <span className="flex-1 break-all text-text leading-[15px]">{value}</span>
+            <span className="flex-1 break-all font-mono text-text leading-[15px]">{value}</span>
             <button
               className={`rounded border px-2 py-[3.75px] font-mono text-[11px] leading-[15px] transition ${
                 copiedField === key

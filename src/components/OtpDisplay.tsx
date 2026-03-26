@@ -54,7 +54,7 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
       </div>
       <div className="flex items-center gap-[15px]">
         <span
-          className="cursor-pointer text-[32px] font-bold tracking-[6px] text-cyan leading-[30px] hover:opacity-80"
+          className="cursor-pointer font-mono text-[32px] font-bold tracking-[6px] text-cyan leading-[30px] hover:opacity-80"
           onClick={handleCopy}
           title="Click to copy"
         >
@@ -87,7 +87,7 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
               strokeLinecap="round"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-xs text-cyan leading-[15px]">
+          <span className="absolute inset-0 flex items-center justify-center font-mono text-xs text-cyan leading-[15px]">
             {secondsLeft}
           </span>
         </div>

@@ -107,7 +107,6 @@ interface SidebarProps {
   entries: string[];
   selected: string | null;
   onSelect: (path: string) => void;
-  onNewEntry: () => void;
   focused: boolean;
   onRequestFocus: () => void;
 }
@@ -116,7 +115,6 @@ export default function Sidebar({
   entries,
   selected,
   onSelect,
-  onNewEntry,
   focused,
   onRequestFocus,
 }: SidebarProps) {
@@ -250,7 +248,7 @@ export default function Sidebar({
             if (el) rowRefs.current.set(index, el);
             else rowRefs.current.delete(index);
           }}
-          className={`flex cursor-pointer items-center gap-1.5 py-[7.5px] text-xs text-sidebar-text opacity-80 hover:opacity-100 ${
+          className={`flex cursor-pointer items-center gap-1.5 py-[4px] font-mono text-xs leading-[14px] text-sidebar-text opacity-80 hover:opacity-100 ${
             isFocused ? "ring-1 ring-sidebar-text" : ""
           }`}
           style={{ paddingLeft: `${node.depth * 16 + 12}px`, paddingRight: "12px" }}
@@ -273,7 +271,7 @@ export default function Sidebar({
           if (el) rowRefs.current.set(index, el);
           else rowRefs.current.delete(index);
         }}
-        className={`flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent py-[7.5px] text-left font-mono text-xs hover:bg-white/10 ${
+        className={`flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent py-[4px] text-left font-mono text-xs leading-[14px] hover:bg-white/10 ${
           isSelected ? "bg-white/15 text-sidebar-text" : "text-sidebar-text/80"
         } ${isFocused ? "ring-1 ring-sidebar-text" : ""}`}
         style={{ paddingLeft: `${node.depth * 16 + 12}px`, paddingRight: "12px" }}
@@ -292,21 +290,10 @@ export default function Sidebar({
     <div
       data-sidebar
       data-tauri-drag-region
-      className="flex w-[260px] min-w-[200px] flex-col border-r border-border bg-sidebar-bg text-sidebar-text"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl bg-sidebar-bg text-sidebar-text"
     >
-      <div data-tauri-drag-region className="flex flex-col gap-[7.5px] border-b border-border/30 p-[15px] pt-[45px]">
-        <div className="text-sm font-semibold uppercase tracking-wider text-sidebar-text">
-          Pass Picker
-        </div>
+      <div data-tauri-drag-region className="flex flex-col gap-[6px] border-b border-border/30 p-[15px] pt-[25px]">
         <SearchBar value={search} onChange={setSearch} onSubmit={() => setFocusedIndex(0)} />
-        <div>
-          <button
-            className="rounded border border-sidebar-text/40 bg-sidebar-text/20 px-2 py-[3.75px] font-mono text-xs font-semibold text-sidebar-text hover:bg-sidebar-text/30"
-            onClick={onNewEntry}
-          >
-            + New
-          </button>
-        </div>
       </div>
       <div ref={containerRef} className="relative z-[2] mx-2 my-[7.5px] flex-1 overflow-y-auto rounded-lg">
         {flatNodes.length === 0 && (
