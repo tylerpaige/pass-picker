@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import SearchBar from "./SearchBar";
 
 interface TreeNode {
@@ -6,6 +6,14 @@ interface TreeNode {
   path: string;
   children: TreeNode[];
   isFolder: boolean;
+}
+
+interface FlatNode {
+  path: string;
+  name: string;
+  isFolder: boolean;
+  depth: number;
+  parentPath: string | null;
 }
 
 function buildTree(entries: string[]): TreeNode[] {
@@ -50,6 +58,30 @@ function buildTree(entries: string[]): TreeNode[] {
   return root;
 }
 
+function flattenVisible(
+  nodes: TreeNode[],
+  expanded: Set<string>,
+  depth: number = 0,
+  parentPath: string | null = null
+): FlatNode[] {
+  const result: FlatNode[] = [];
+  for (const node of nodes) {
+    result.push({
+      path: node.path,
+      name: node.name,
+      isFolder: node.isFolder,
+      depth,
+      parentPath,
+    });
+    if (node.isFolder && expanded.has(node.path)) {
+      result.push(
+        ...flattenVisible(node.children, expanded, depth + 1, node.path)
+      );
+    }
+  }
+  return result;
+}
+
 function fuzzyMatch(query: string, text: string): boolean {
   const q = query.toLowerCase();
   const t = text.toLowerCase();
@@ -60,45 +92,15 @@ function fuzzyMatch(query: string, text: string): boolean {
   return qi === q.length;
 }
 
-interface FolderProps {
-  node: TreeNode;
-  selected: string | null;
-  onSelect: (path: string) => void;
-}
-
-function Folder({ node, selected, onSelect }: FolderProps) {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <div className="tree-folder">
-      <div className="tree-folder-label" onClick={() => setOpen(!open)}>
-        <span>{open ? "\u25BE" : "\u25B8"}</span>
-        <span>{node.name}</span>
-      </div>
-      {open && (
-        <div className="tree-folder-children">
-          {node.children.map((child) =>
-            child.isFolder ? (
-              <Folder
-                key={child.path}
-                node={child}
-                selected={selected}
-                onSelect={onSelect}
-              />
-            ) : (
-              <button
-                key={child.path}
-                className={`tree-entry ${selected === child.path ? "active" : ""}`}
-                onClick={() => onSelect(child.path)}
-              >
-                {child.name}
-              </button>
-            )
-          )}
-        </div>
-      )}
-    </div>
-  );
+function collectFolderPaths(nodes: TreeNode[]): string[] {
+  const paths: string[] = [];
+  for (const node of nodes) {
+    if (node.isFolder) {
+      paths.push(node.path);
+      paths.push(...collectFolderPaths(node.children));
+    }
+  }
+  return paths;
 }
 
 interface SidebarProps {
@@ -106,6 +108,8 @@ interface SidebarProps {
   selected: string | null;
   onSelect: (path: string) => void;
   onNewEntry: () => void;
+  focused: boolean;
+  onRequestFocus: () => void;
 }
 
 export default function Sidebar({
@@ -113,8 +117,15 @@ export default function Sidebar({
   selected,
   onSelect,
   onNewEntry,
+  focused,
+  onRequestFocus,
 }: SidebarProps) {
   const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [initialized, setInitialized] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   const filtered = search
     ? entries.filter((e) => fuzzyMatch(search, e))
@@ -122,41 +133,188 @@ export default function Sidebar({
 
   const tree = buildTree(filtered);
 
+  // Initialize all folders as expanded on first render
+  useEffect(() => {
+    if (!initialized && tree.length > 0) {
+      setExpanded(new Set(collectFolderPaths(tree)));
+      setInitialized(true);
+    }
+  }, [tree, initialized]);
+
+  const flatNodes = flattenVisible(tree, expanded);
+
+  const toggleExpand = useCallback(
+    (path: string) => {
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
+        return next;
+      });
+    },
+    []
+  );
+
+  // Auto-scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex >= 0) {
+      const el = rowRefs.current.get(focusedIndex);
+      el?.scrollIntoView({ block: "nearest" });
+    }
+  }, [focusedIndex]);
+
+  // Keyboard handler
+  useEffect(() => {
+    if (!focused) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip when search input is focused
+      if (
+        document.activeElement?.tagName === "INPUT" &&
+        document.activeElement?.closest("[data-sidebar]")
+      ) {
+        return;
+      }
+
+      const len = flatNodes.length;
+      if (len === 0) return;
+
+      switch (e.key) {
+        case "ArrowDown": {
+          e.preventDefault();
+          setFocusedIndex((prev) => Math.min(prev + 1, len - 1));
+          break;
+        }
+        case "ArrowUp": {
+          e.preventDefault();
+          setFocusedIndex((prev) => Math.max(prev - 1, 0));
+          break;
+        }
+        case "ArrowRight": {
+          e.preventDefault();
+          const node = flatNodes[focusedIndex];
+          if (!node || !node.isFolder) break;
+          if (!expanded.has(node.path)) {
+            toggleExpand(node.path);
+          } else {
+            // Move to first child
+            if (focusedIndex + 1 < len && flatNodes[focusedIndex + 1].depth > node.depth) {
+              setFocusedIndex(focusedIndex + 1);
+            }
+          }
+          break;
+        }
+        case "ArrowLeft": {
+          e.preventDefault();
+          const current = flatNodes[focusedIndex];
+          if (!current) break;
+          if (current.isFolder && expanded.has(current.path)) {
+            toggleExpand(current.path);
+          } else if (current.parentPath) {
+            // Jump to parent folder
+            const parentIdx = flatNodes.findIndex(
+              (n) => n.path === current.parentPath
+            );
+            if (parentIdx >= 0) setFocusedIndex(parentIdx);
+          }
+          break;
+        }
+        case "Enter": {
+          e.preventDefault();
+          const target = flatNodes[focusedIndex];
+          if (!target) break;
+          if (target.isFolder) {
+            toggleExpand(target.path);
+          } else {
+            onSelect(target.path);
+          }
+          break;
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [focused, flatNodes, focusedIndex, expanded, toggleExpand, onSelect]);
+
+  function renderRow(node: FlatNode, index: number) {
+    const isFocused = focused && focusedIndex === index;
+    const isSelected = !node.isFolder && selected === node.path;
+
+    if (node.isFolder) {
+      const isOpen = expanded.has(node.path);
+      return (
+        <div
+          key={node.path}
+          ref={(el) => {
+            if (el) rowRefs.current.set(index, el);
+            else rowRefs.current.delete(index);
+          }}
+          className={`flex cursor-pointer items-center gap-1.5 py-[7.5px] text-xs text-sidebar-text opacity-80 hover:opacity-100 ${
+            isFocused ? "ring-1 ring-sidebar-text" : ""
+          }`}
+          style={{ paddingLeft: `${node.depth * 16 + 12}px`, paddingRight: "12px" }}
+          onClick={() => {
+            onRequestFocus();
+            setFocusedIndex(index);
+            toggleExpand(node.path);
+          }}
+        >
+          <span>{isOpen ? "\u25BE" : "\u25B8"}</span>
+          <span>{node.name}</span>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={node.path}
+        ref={(el) => {
+          if (el) rowRefs.current.set(index, el);
+          else rowRefs.current.delete(index);
+        }}
+        className={`flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent py-[7.5px] text-left font-mono text-xs hover:bg-white/10 ${
+          isSelected ? "bg-white/15 text-sidebar-text" : "text-sidebar-text/80"
+        } ${isFocused ? "ring-1 ring-sidebar-text" : ""}`}
+        style={{ paddingLeft: `${node.depth * 16 + 12}px`, paddingRight: "12px" }}
+        onClick={() => {
+          onRequestFocus();
+          setFocusedIndex(index);
+          onSelect(node.path);
+        }}
+      >
+        {node.name}
+      </button>
+    );
+  }
+
   return (
-    <div className="sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-title">Pass Picker</div>
-        <SearchBar value={search} onChange={setSearch} />
-        <div className="sidebar-actions">
-          <button className="btn btn-small btn-primary" onClick={onNewEntry}>
+    <div
+      data-sidebar
+      data-tauri-drag-region
+      className="flex w-[260px] min-w-[200px] flex-col border-r border-border bg-sidebar-bg text-sidebar-text"
+    >
+      <div data-tauri-drag-region className="flex flex-col gap-[7.5px] border-b border-border/30 p-[15px] pt-[45px]">
+        <div className="text-sm font-semibold uppercase tracking-wider text-sidebar-text">
+          Pass Picker
+        </div>
+        <SearchBar value={search} onChange={setSearch} onSubmit={() => setFocusedIndex(0)} />
+        <div>
+          <button
+            className="rounded border border-sidebar-text/40 bg-sidebar-text/20 px-2 py-[3.75px] font-mono text-xs font-semibold text-sidebar-text hover:bg-sidebar-text/30"
+            onClick={onNewEntry}
+          >
             + New
           </button>
         </div>
       </div>
-      <div className="sidebar-tree">
-        {tree.length === 0 && (
-          <div className="loading">
+      <div ref={containerRef} className="relative z-[2] mx-2 my-[7.5px] flex-1 overflow-y-auto rounded-lg">
+        {flatNodes.length === 0 && (
+          <div className="p-[15px] text-xs text-sidebar-text/60">
             {search ? "No matches" : "No entries found"}
           </div>
         )}
-        {tree.map((node) =>
-          node.isFolder ? (
-            <Folder
-              key={node.path}
-              node={node}
-              selected={selected}
-              onSelect={onSelect}
-            />
-          ) : (
-            <button
-              key={node.path}
-              className={`tree-entry ${selected === node.path ? "active" : ""}`}
-              onClick={() => onSelect(node.path)}
-            >
-              {node.name}
-            </button>
-          )
-        )}
+        {flatNodes.map((node, index) => renderRow(node, index))}
       </div>
     </div>
   );

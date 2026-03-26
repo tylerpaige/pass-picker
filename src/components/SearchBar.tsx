@@ -3,9 +3,10 @@ import { useEffect, useRef } from "react";
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
+  onSubmit?: () => void;
 }
 
-export default function SearchBar({ value, onChange }: SearchBarProps) {
+export default function SearchBar({ value, onChange, onSubmit }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -18,19 +19,24 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
         onChange("");
         inputRef.current?.blur();
       }
+      if (e.key === "Enter" && document.activeElement === inputRef.current) {
+        e.preventDefault();
+        inputRef.current?.blur();
+        onSubmit?.();
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onChange]);
+  }, [onChange, onSubmit]);
 
   return (
     <input
       ref={inputRef}
-      className="search-input"
       type="text"
       placeholder="Search... (Cmd+K)"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded border border-sidebar-text/30 bg-black/20 px-[7.5px] py-[7.5px] font-mono text-xs text-sidebar-text outline-none placeholder:text-sidebar-text/50 focus:border-sidebar-text/60"
     />
   );
 }

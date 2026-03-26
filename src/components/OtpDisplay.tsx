@@ -7,7 +7,6 @@ interface OtpDisplayProps {
 
 export default function OtpDisplay({ entryName }: OtpDisplayProps) {
   const [code, setCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(30);
   const [copied, setCopied] = useState(false);
 
@@ -15,11 +14,9 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
     try {
       const otp = await getOtp(entryName);
       setCode(otp);
-      setError(null);
       setSecondsLeft(30 - (Math.floor(Date.now() / 1000) % 30));
     } catch {
       setCode(null);
-      setError(null); // silently fail — entry may not have OTP
     }
   }, [entryName]);
 
@@ -32,9 +29,7 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
     const interval = setInterval(() => {
       const remaining = 30 - (Math.floor(Date.now() / 1000) % 30);
       setSecondsLeft(remaining);
-      if (remaining === 30) {
-        fetchOtp();
-      }
+      if (remaining === 30) fetchOtp();
     }, 1000);
     return () => clearInterval(interval);
   }, [code, fetchOtp]);
@@ -46,31 +41,38 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (error || !code) return null;
+  if (!code) return null;
 
   const progress = secondsLeft / 30;
   const circumference = 2 * Math.PI * 16;
   const dashOffset = circumference * (1 - progress);
 
   return (
-    <div className="otp-section">
-      <div className="otp-label">TOTP Code</div>
-      <div className="otp-display">
+    <div className="mt-[15px] rounded-md border border-datum-border bg-datum-bg p-[15px]">
+      <div className="mb-[7.5px] text-[11px] uppercase tracking-wide text-cyan leading-[15px]">
+        TOTP Code
+      </div>
+      <div className="flex items-center gap-[15px]">
         <span
-          className="otp-code"
+          className="cursor-pointer text-[32px] font-bold tracking-[6px] text-cyan leading-[30px] hover:opacity-80"
           onClick={handleCopy}
           title="Click to copy"
         >
           {code}
         </span>
-        <div className="otp-countdown">
-          <svg width="40" height="40" viewBox="0 0 40 40">
+        <div className="relative h-10 w-10">
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 40 40"
+            className="-rotate-90"
+          >
             <circle
               cx="20"
               cy="20"
               r="16"
               fill="none"
-              stroke="var(--border)"
+              className="stroke-dim"
               strokeWidth="3"
             />
             <circle
@@ -78,17 +80,23 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
               cy="20"
               r="16"
               fill="none"
-              stroke="var(--cyan)"
+              className="stroke-cyan"
               strokeWidth="3"
               strokeDasharray={circumference}
               strokeDashoffset={dashOffset}
               strokeLinecap="round"
             />
           </svg>
-          <span className="otp-countdown-text">{secondsLeft}</span>
+          <span className="absolute inset-0 flex items-center justify-center text-xs text-cyan leading-[15px]">
+            {secondsLeft}
+          </span>
         </div>
         <button
-          className={`btn btn-small ${copied ? "copied" : ""}`}
+          className={`rounded border px-2 py-[3.75px] font-mono text-[11px] leading-[15px] transition ${
+            copied
+              ? "border-neon text-neon"
+              : "border-datum-border bg-surface text-text hover:bg-hover"
+          }`}
           onClick={handleCopy}
         >
           {copied ? "Copied" : "Copy"}

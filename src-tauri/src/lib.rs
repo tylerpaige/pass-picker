@@ -31,6 +31,14 @@ fn pass_command() -> Command {
     cmd
 }
 
+fn git_command() -> Command {
+    let store_dir = password_store_dir();
+    let mut cmd = Command::new("git");
+    cmd.env("PATH", shell_path());
+    cmd.current_dir(store_dir);
+    cmd
+}
+
 fn password_store_dir() -> String {
     std::env::var("PASSWORD_STORE_DIR")
         .unwrap_or_else(|_| {
@@ -179,6 +187,46 @@ fn generate_password(name: String, length: u32) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+#[tauri::command]
+fn rename_entry(old_name: String, new_name: String) -> Result<(), String> {
+    let output = pass_command()
+        .args(["mv", "-f", &old_name, &new_name])
+        .output()
+        .map_err(|e| format!("Failed to rename entry: {}", e))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn git_pull() -> Result<(), String> {
+    let output = git_command()
+        .args(["pull", "--rebase"])
+        .output()
+        .map_err(|e| format!("Failed to git pull: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn git_push() -> Result<(), String> {
+    let output = git_command()
+        .args(["push"])
+        .output()
+        .map_err(|e| format!("Failed to git push: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -190,7 +238,10 @@ pub fn run() {
             insert_entry,
             edit_entry,
             delete_entry,
+            rename_entry,
             generate_password,
+            git_pull,
+            git_push,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
