@@ -17,7 +17,7 @@ export default function SearchBar({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "f")) {
         e.preventDefault();
         inputRef.current?.focus();
       }

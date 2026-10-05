@@ -7,7 +7,7 @@ import {
   editEntry,
 } from "../lib/pass";
 import type { ParsedEntry } from "../lib/pass";
-import { formatEntryPathTitle, titleCaseFieldLabel } from "../lib/strings";
+import { titleCaseFieldLabel } from "../lib/strings";
 import OtpDisplay from "./OtpDisplay";
 import PasswordGenerator from "./PasswordGenerator";
 
@@ -118,6 +118,10 @@ export default function EntryView({
       if (isEditingName || showGenerator) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+      // Don't steal keystrokes from search or other inputs
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setFocusedFieldIndex((prev) => Math.min(prev + 1, fields.length - 1));
@@ -216,7 +220,7 @@ export default function EntryView({
             onClick={startEditingName}
             title="Click to rename"
           >
-            {formatEntryPathTitle(entryName)}
+            {entryName}
           </div>
         )}
       </div>

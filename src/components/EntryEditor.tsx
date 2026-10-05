@@ -1,25 +1,47 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { getEntry, editEntry, insertEntry } from "../lib/pass";
 import PasswordGenerator from "./PasswordGenerator";
 
 interface EntryEditorProps {
   entryName: string | null;
+  initialPath?: string;
+  folderSuggestions?: string[];
   onSaved: (name: string) => void;
   onCancel: () => void;
 }
 
 export default function EntryEditor({
   entryName,
+  initialPath = "",
+  folderSuggestions = [],
   onSaved,
   onCancel,
 }: EntryEditorProps) {
-  const [name, setName] = useState(entryName || "");
+  const [name, setName] = useState(entryName || initialPath || "");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showGenerator, setShowGenerator] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const pathInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   const isNew = entryName === null;
+
+  const filteredSuggestions = useMemo(() => {
+    if (!isNew) return [];
+    if (!name) return folderSuggestions.slice(0, 8);
+    const lower = name.toLowerCase();
+    return folderSuggestions
+      .filter((folder) => folder.toLowerCase().includes(lower) && folder !== name)
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(lower) ? 0 : 1;
+        const bStarts = b.toLowerCase().startsWith(lower) ? 0 : 1;
+        return aStarts - bStarts || a.localeCompare(b);
+      })
+      .slice(0, 8);
+  }, [folderSuggestions, isNew, name]);
 
   useEffect(() => {
     if (!isNew && entryName) {
@@ -40,6 +62,10 @@ export default function EntryEditor({
     function handleKeyDown(e: KeyboardEvent) {
       if (showGenerator) return;
       if (e.key === "Escape") {
+        if (showSuggestions) {
+          setShowSuggestions(false);
+          return;
+        }
         onCancel();
       }
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -49,7 +75,22 @@ export default function EntryEditor({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel, name, content, showGenerator]);
+  }, [onCancel, name, content, showGenerator, showSuggestions]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        pathInputRef.current &&
+        !pathInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   async function handleSave() {
     if (!name.trim()) {
@@ -76,6 +117,13 @@ export default function EntryEditor({
     }
   }
 
+  function applySuggestion(folder: string) {
+    setName(folder);
+    setShowSuggestions(false);
+    setSuggestionIndex(-1);
+    pathInputRef.current?.focus();
+  }
+
   if (loading && !isNew)
     return <div className="p-[15px] text-xs text-dim">Loading entry...</div>;
 
@@ -88,18 +136,73 @@ export default function EntryEditor({
       {error && <div className="mb-[15px] text-xs text-danger">{error}</div>}
 
       {isNew && (
-        <div className="mb-[15px]">
+        <div className="relative mb-[15px]">
           <label className="mb-[7.5px] block text-[11px] uppercase tracking-wide text-dim leading-[15px]">
             Entry Path
           </label>
           <input
+            ref={pathInputRef}
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
+            onChange={(e) => {
+              setName(e.target.value);
+              setShowSuggestions(true);
+              setSuggestionIndex(-1);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onKeyDown={(e) => {
+              if (!showSuggestions || filteredSuggestions.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSuggestionIndex((prev) =>
+                  Math.min(prev + 1, filteredSuggestions.length - 1)
+                );
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSuggestionIndex((prev) => Math.max(prev - 1, -1));
+              } else if (e.key === "Enter" && suggestionIndex >= 0) {
+                e.preventDefault();
+                applySuggestion(filteredSuggestions[suggestionIndex]);
+              } else if (e.key === "Tab" && suggestionIndex >= 0) {
+                e.preventDefault();
+                applySuggestion(filteredSuggestions[suggestionIndex]);
+              } else if (e.key === "Escape" && showSuggestions) {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowSuggestions(false);
+              }
+            }}
             placeholder="folder/entry-name"
             autoFocus
             className="w-full rounded border border-datum-border bg-bg px-[7.5px] py-[7.5px] font-mono text-[13px] text-text outline-none leading-[15px] focus:border-neon"
           />
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded border border-datum-border bg-bg shadow-sm"
+            >
+              {filteredSuggestions.map((folder, i) => (
+                <button
+                  key={folder}
+                  type="button"
+                  className={`block w-full px-[7.5px] py-[6px] text-left font-mono text-[12px] leading-[15px] ${
+                    i === suggestionIndex
+                      ? "bg-neon/15 text-neon"
+                      : "text-text hover:bg-hover"
+                  }`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    applySuggestion(folder);
+                  }}
+                >
+                  {folder}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

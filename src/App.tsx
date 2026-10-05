@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useEffect, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import { listEntries, gitPull, gitPush, deleteEntry } from "./lib/pass";
 import Sidebar from "./components/Sidebar";
 import EntryView from "./components/EntryView";
@@ -9,12 +9,23 @@ type View =
   | { kind: "empty" }
   | { kind: "view"; name: string }
   | { kind: "edit"; name: string }
-  | { kind: "new" };
+  | { kind: "new"; initialPath?: string };
 
 type FocusZone = "sidebar" | "main";
 
 const MIN_SIDEBAR = 200;
 const MAX_SIDEBAR = 560;
+
+function collectFolderSuggestions(entries: string[]): string[] {
+  const folders = new Set<string>();
+  for (const entry of entries) {
+    const parts = entry.split("/");
+    for (let i = 1; i < parts.length; i++) {
+      folders.add(parts.slice(0, i).join("/") + "/");
+    }
+  }
+  return Array.from(folders).sort((a, b) => a.localeCompare(b));
+}
 
 export default function App() {
   const [entries, setEntries] = useState<string[]>([]);
@@ -23,6 +34,11 @@ export default function App() {
   const [focusZone, setFocusZone] = useState<FocusZone>("sidebar");
   const [deleting, setDeleting] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
+
+  const folderSuggestions = useMemo(
+    () => collectFolderSuggestions(entries),
+    [entries]
+  );
 
   // Default to a 50/50 split between Sidebar and EntryView.
   // (We exclude the fixed gap + resize handle widths, and clamp to the allowed range.)
@@ -109,6 +125,37 @@ export default function App() {
   const canEdit = view.kind === "view";
   const canDelete = view.kind === "view";
 
+  function openNew(initialPath?: string) {
+    setView({ kind: "new", initialPath });
+    setFocusZone("main");
+  }
+
+  function handleSidebarRenamed(
+    oldPath: string,
+    newPath: string,
+    isFolder: boolean
+  ) {
+    gitPush().catch(() => {});
+    loadEntries();
+
+    setView((prev) => {
+      if (prev.kind !== "view" && prev.kind !== "edit") return prev;
+      if (isFolder) {
+        if (prev.name === oldPath || prev.name.startsWith(oldPath + "/")) {
+          return {
+            ...prev,
+            name: newPath + prev.name.slice(oldPath.length),
+          };
+        }
+        return prev;
+      }
+      if (prev.name === oldPath) {
+        return { ...prev, name: newPath };
+      }
+      return prev;
+    });
+  }
+
   async function handleDeleteCurrentEntry() {
     if (!canDelete) return;
     if (view.kind !== "view") return;
@@ -151,10 +198,7 @@ export default function App() {
     canEdit,
     canDelete,
     isDeleting: deleting,
-    onNew: () => {
-      setView({ kind: "new" });
-      setFocusZone("main");
-    },
+    onNew: () => openNew(),
     onEdit: () => {
       if (view.kind !== "view") return;
       setView({ kind: "edit", name: view.name });
@@ -184,6 +228,8 @@ export default function App() {
                 }}
                 focused={focusZone === "sidebar"}
                 onRequestFocus={() => setFocusZone("sidebar")}
+                onNew={openNew}
+                onRenamed={handleSidebarRenamed}
               />
             </div>
             <div
@@ -238,8 +284,10 @@ export default function App() {
 
             {view.kind === "new" && (
               <EntryEditor
-                key="new"
+                key={`new-${view.initialPath ?? ""}`}
                 entryName={null}
+                initialPath={view.initialPath}
+                folderSuggestions={folderSuggestions}
                 onSaved={(name) => {
                   gitPush().catch(() => {});
                   loadEntries();
