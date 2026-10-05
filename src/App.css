@@ -32,52 +32,86 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: "Reckless";
-  src: url("./webfonts/RecklessCollectionVF-TRIAL.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 @theme {
   --font-mono: "iA Mono", ui-monospace, monospace;
-  /* --font-serif: "Reckless", ui-serif, Georgia, "Times New Roman", Times, serif; */
-  --font-serif: ui-serif, Georgia, "Times New Roman", Times, serif;
 
-  --color-bg: #f2f0ed;
-  --color-surface: #e8eed6;
+  /* Split app chrome */
+  --color-left-bg: #3b442b;
+  --color-right-bg: #524b3b;
+
+  /* Sidebar tree */
+  --color-tree-a: #a7c28b;
+  --color-tree-b: #96ba86;
+  --color-tree-focused: #87ab4e;
+  --color-tree-selected: #a6a636;
+  --color-hierarchy: #a6a636;
+  --color-sidebar-text: #2f3a28;
+  --color-sidebar-muted: #5a6b4a;
+  --color-sidebar-controls: #c5d4b0;
+
+  /* Detail pane (show page) */
+  --color-surface: #807864;
+  --color-surface-text: #322e25;
+  --color-entry-title: #322e25;
+  --color-surface-muted: #524b3b;
+  --color-datum-bg: #48442f;
+  --color-datum-text: #807864;
+  --color-field-focus: #827e73;
+  --color-field-rule: #827e73;
+  --color-divider: #827e73;
+  --color-pane-footer-text: #c8c4b6;
+
+  /* Accents / shared */
+  --color-accent: #8fbf4a;
+  --color-neon: #8fbf4a;
+  --color-dim: #6a6658;
+  --color-border: #5a7247;
   --color-hover: #dde5c8;
   --color-active: #d3dcba;
-  --color-border: #5a7247;
-  --color-dim: #8a9a78;
-  --color-neon: #3d5a2e;
-  --color-cyan: #4a6e3a;
-  --color-amber: #6b7c3f;
+  --color-cyan: #6a9a5a;
+  --color-amber: #a6a636;
   --color-danger: #c44b4b;
+  --color-text: #2a2820;
+  --color-bg: #3b442b;
 
-  --color-sidebar-bg: #5c6e4e;
-  --color-sidebar-text: #e4eab0;
-  --color-text: #3a3a38;
-  --color-datum-bg: #dce8cc;
-  --color-datum-border: #5a7247;
+  /* Modal themes */
+  --color-edit-bg: #2c3e6b;
+  --color-edit-input: #232f54;
+  --color-edit-label: #9aadc8;
+  --color-edit-text: #e8eef8;
+  --color-edit-field-focus: #3a5080;
+  --color-edit-field-rule: #3a5080;
+
+  --color-new-bg: #4a6541;
+  --color-new-input: #2f4229;
+  --color-new-label: #b8c9ae;
+  --color-new-text: #e8f0e4;
+  --color-new-field-focus: #5a7551;
+  --color-new-field-rule: #5a7551;
+
+  --color-delete-bg: #7a4434;
+  --color-delete-text: #e8d8d0;
+  --color-delete-muted: #c4a89c;
 
   --baseline: 15px;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   overflow: hidden;
 }
 
-/* Baseline grid */
 body {
-  font-family: var(--font-serif);
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: var(--baseline);
+  background: var(--color-left-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Window drag helpers for Tauri custom titlebar */
 .drag-region {
   -webkit-app-region: drag;
   user-select: none;
@@ -87,27 +121,77 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-dim); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-border); }
-
-/* Sidebar noise texture */
-[data-sidebar] {
-  --noise-density: 0.65;
-  --noise-opacity: 0.08;
-  --noise-color: #3a5230;
-  position: relative;
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-sidebar-text) 35%, transparent);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-sidebar-text) 55%, transparent);
 }
 
-[data-sidebar]::before {
+/* Tree zebra — selected (active entry) vs keyboard focus */
+.tree-row {
+  background: var(--color-tree-a);
+}
+.tree-row:nth-child(even) {
+  background: var(--color-tree-b);
+}
+.tree-row[data-selected="true"] {
+  background: var(--color-tree-selected);
+}
+.tree-row[data-focused="true"] {
+  background: var(--color-tree-focused);
+}
+
+/* Range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 85%, white);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 12px;
+  border: none;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 85%, white);
+  cursor: pointer;
+}
+
+.pane-divider {
+  position: relative;
+  width: 2px;
+}
+
+.pane-divider::after {
   content: "";
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 1px;
+  background: var(--color-accent);
   pointer-events: none;
-  z-index: 1;
-  opacity: var(--noise-opacity);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
 }

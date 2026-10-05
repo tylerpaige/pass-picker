@@ -3,9 +3,15 @@ import { getOtp, copyToClipboard } from "../lib/pass";
 
 interface OtpDisplayProps {
   entryName: string;
+  showRuleAbove?: boolean;
+  ruleCoveredByPrevious?: boolean;
 }
 
-export default function OtpDisplay({ entryName }: OtpDisplayProps) {
+export default function OtpDisplay({
+  entryName,
+  showRuleAbove = false,
+  ruleCoveredByPrevious = false,
+}: OtpDisplayProps) {
   const [code, setCode] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(30);
   const [copied, setCopied] = useState(false);
@@ -48,58 +54,68 @@ export default function OtpDisplay({ entryName }: OtpDisplayProps) {
   const dashOffset = circumference * (1 - progress);
 
   return (
-    <div className="mt-[15px] rounded-md border border-datum-border bg-datum-bg p-[15px]">
-      <div className="mb-[7.5px] text-[11px] uppercase tracking-wide text-cyan leading-[15px]">
-        TOTP Code
-      </div>
-      <div className="flex items-center gap-[15px]">
-        <span
-          className="cursor-pointer font-mono text-[32px] font-bold tracking-[6px] text-cyan leading-[30px] hover:opacity-80"
-          onClick={handleCopy}
-          title="Click to copy"
-        >
-          {code}
-        </span>
-        <div className="relative h-10 w-10">
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 40 40"
-            className="-rotate-90"
-          >
-            <circle
-              cx="20"
-              cy="20"
-              r="16"
-              fill="none"
-              className="stroke-dim"
-              strokeWidth="3"
-            />
-            <circle
-              cx="20"
-              cy="20"
-              r="16"
-              fill="none"
-              className="stroke-cyan"
-              strokeWidth="3"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              strokeLinecap="round"
-            />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center font-mono text-xs text-cyan leading-[15px]">
-            {secondsLeft}
+    <div className="flex flex-col">
+      {showRuleAbove && (
+        <div
+          className={`h-[6px] ${
+            ruleCoveredByPrevious
+              ? "bg-transparent"
+              : "bg-[var(--color-field-rule)]"
+          }`}
+        />
+      )}
+      <div className="flex flex-col gap-2 px-4 py-5">
+        <div className="flex items-baseline justify-between">
+          <span className="font-mono text-[13px] text-[var(--color-surface-muted)]">
+            otp
           </span>
+          {copied && (
+            <span className="font-mono text-[11px] text-[var(--color-surface-muted)]">
+              copied
+            </span>
+          )}
         </div>
         <button
-          className={`rounded border px-2 py-[3.75px] font-mono text-[11px] leading-[15px] transition ${
-            copied
-              ? "border-neon text-neon"
-              : "border-datum-border bg-surface text-text hover:bg-hover"
-          }`}
+          type="button"
           onClick={handleCopy}
+          className="flex w-full items-center gap-4 rounded-xl bg-[var(--color-datum-bg)] px-4 py-3 text-left"
         >
-          {copied ? "Copied" : "Copy"}
+          <span className="font-mono text-[22px] font-medium tracking-[4px] text-[var(--color-datum-text)]">
+            {code}
+          </span>
+          <div className="relative ml-auto h-9 w-9 shrink-0">
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 40 40"
+              className="-rotate-90"
+            >
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--color-datum-text)]/30"
+                strokeWidth="3"
+              />
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--color-datum-text)]"
+                strokeWidth="3"
+                strokeDasharray={circumference}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] text-[var(--color-datum-text)]">
+              {secondsLeft}
+            </span>
+          </div>
         </button>
       </div>
     </div>

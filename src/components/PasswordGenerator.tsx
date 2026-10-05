@@ -20,7 +20,6 @@ function generatePassword(length: number, specialChars: string): string {
 
   const result: string[] = [];
 
-  // Guarantee one from each charset
   for (let i = 0; i < charsets.length; i++) {
     const cs = charsets[i];
     if (cs.length > 0) {
@@ -28,12 +27,10 @@ function generatePassword(length: number, specialChars: string): string {
     }
   }
 
-  // Fill remaining
   for (let i = result.length; i < length; i++) {
     result.push(pool[arr[i] % pool.length]);
   }
 
-  // Fisher-Yates shuffle
   const shuffleArr = new Uint32Array(result.length);
   crypto.getRandomValues(shuffleArr);
   for (let i = result.length - 1; i > 0; i--) {
@@ -72,103 +69,108 @@ export default function PasswordGenerator({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onCancel]);
 
+  const inputClass =
+    "w-full rounded-md bg-[var(--color-edit-input)] px-3 py-2.5 font-mono text-[14px] text-[var(--color-edit-text)] outline-none";
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex flex-col bg-[var(--color-edit-bg)] text-[var(--color-edit-text)]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="w-[420px] rounded-lg border border-datum-border bg-surface p-[30px]">
-        <div className="mb-[15px] text-sm font-semibold text-neon leading-[30px]">
-          Generate Password
+      <div data-tauri-drag-region className="drag-region h-10 shrink-0" />
+
+      <div className="no-drag absolute right-6 top-4 flex items-center gap-5">
+        <button
+          type="button"
+          className="font-mono text-[15px] text-[var(--color-edit-label)] transition hover:text-[var(--color-edit-text)]"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="font-mono text-[15px] text-[var(--color-edit-label)] transition hover:text-[var(--color-edit-text)]"
+          onClick={() => onApply(newPassword)}
+        >
+          Save
+        </button>
+      </div>
+
+      <div className="flex min-h-0 flex-1 gap-12 overflow-y-auto px-10 pb-10 pt-4">
+        <div className="min-w-0 flex-1">
+          <div className="mb-4 font-mono text-[13px] text-[var(--color-edit-label)]">
+            regenerate password...
+          </div>
         </div>
 
-        <div className="mb-[15px]">
-          <label className="mb-[7.5px] block text-[11px] uppercase tracking-wide text-dim leading-[15px]">
-            Current Password
-          </label>
-          <input
-            type="text"
-            readOnly
-            value={currentPassword}
-            className="w-full rounded border border-datum-border bg-bg px-[7.5px] py-[7.5px] font-mono text-xs text-dim outline-none leading-[15px]"
-          />
-        </div>
-
-        <div className="mb-[15px]">
-          <label className="mb-[7.5px] block text-[11px] uppercase tracking-wide text-dim leading-[15px]">
-            New Password
-          </label>
-          <div className="flex items-center gap-[7.5px]">
+        <div className="flex min-w-0 flex-[1.15] flex-col gap-5">
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[13px] text-[var(--color-edit-label)]">
+              Current Password
+            </span>
             <input
               type="text"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="flex-1 rounded border border-datum-border bg-bg px-[7.5px] py-[7.5px] font-mono text-xs text-text outline-none leading-[15px] focus:border-neon"
+              readOnly
+              value={currentPassword}
+              className={inputClass}
             />
-            <button
-              className="rounded border border-datum-border bg-datum-bg px-2 py-[3.75px] font-mono text-sm leading-[15px] text-text transition hover:bg-hover"
-              onClick={regenerate}
-              title="Regenerate"
-            >
-              &#x1f503;
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-[15px]">
-          <label className="mb-[7.5px] block text-[11px] uppercase tracking-wide text-dim leading-[15px]">
-            Length: {length}
           </label>
-          <div className="flex items-center gap-[7.5px]">
-            <input
-              type="range"
-              min={4}
-              max={128}
-              value={length}
-              onChange={(e) => setLength(Number(e.target.value))}
-              className="flex-1"
-            />
-            <input
-              type="number"
-              min={4}
-              max={128}
-              value={length}
-              onChange={(e) => {
-                const v = Math.max(4, Math.min(128, Number(e.target.value)));
-                setLength(v);
-              }}
-              className="w-16 rounded border border-datum-border bg-bg px-2 py-[3.75px] font-mono text-xs text-text outline-none leading-[15px] focus:border-neon"
-            />
-          </div>
-        </div>
 
-        <div className="mb-[15px]">
-          <label className="mb-[7.5px] block text-[11px] uppercase tracking-wide text-dim leading-[15px]">
-            Special Characters
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[13px] text-[var(--color-edit-label)]">
+              New Password
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoFocus
+                className={`flex-1 ${inputClass}`}
+              />
+              <button
+                type="button"
+                className="rounded-md bg-[var(--color-edit-input)] px-2.5 py-2.5 font-mono text-sm opacity-70 hover:opacity-100"
+                onClick={regenerate}
+                title="Regenerate"
+              >
+                {"\u21BB"}
+              </button>
+            </div>
           </label>
-          <input
-            type="text"
-            value={specialChars}
-            onChange={(e) => setSpecialChars(e.target.value)}
-            className="w-full rounded border border-datum-border bg-bg px-[7.5px] py-[7.5px] font-mono text-xs text-text outline-none leading-[15px] focus:border-neon"
-          />
-        </div>
 
-        <div className="flex gap-[7.5px]">
-          <button
-            className="rounded border border-neon bg-neon px-[7.5px] py-[7.5px] font-mono text-xs font-semibold text-bg transition hover:opacity-85"
-            onClick={() => onApply(newPassword)}
-          >
-            Apply
-          </button>
-          <button
-            className="rounded border border-datum-border bg-datum-bg px-[7.5px] py-[7.5px] font-mono text-xs text-text transition hover:bg-hover"
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[13px] text-[var(--color-edit-label)]">
+              Password Length
+            </span>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={4}
+                max={64}
+                value={length}
+                onChange={(e) => setLength(Number(e.target.value))}
+                className="flex-1"
+              />
+              <div className="flex h-9 w-10 items-center justify-center rounded-md bg-[var(--color-edit-input)] font-mono text-[13px]">
+                {length}
+              </div>
+            </div>
+          </div>
+
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[13px] text-[var(--color-edit-label)]">
+              Special Characters to Use
+            </span>
+            <input
+              type="text"
+              value={specialChars}
+              onChange={(e) => setSpecialChars(e.target.value)}
+              className={inputClass}
+            />
+          </label>
         </div>
       </div>
     </div>

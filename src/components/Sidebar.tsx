@@ -114,7 +114,6 @@ function normalizeSearchPath(query: string): string {
   return query.trim().replace(/\/+$/, "");
 }
 
-/** Expand ancestor folder paths so `path` is visible in the tree. */
 function ancestorPaths(path: string): string[] {
   const parts = path.split("/");
   const ancestors: string[] = [];
@@ -146,6 +145,13 @@ interface SidebarProps {
   onRequestFocus: () => void;
   onNew: (initialPath?: string) => void;
   onRenamed: (oldPath: string, newPath: string, isFolder: boolean) => void;
+  /** When set, expand ancestors and focus this path in the tree. */
+  revealPath?: string | null;
+  onRevealHandled?: () => void;
+  /** Dim only the tree pane; search controls stay full opacity. */
+  dimmed?: boolean;
+  /** Reports the focused file entry path (null if a folder or nothing). */
+  onFocusedEntryChange?: (path: string | null) => void;
 }
 
 export default function Sidebar({
@@ -156,8 +162,13 @@ export default function Sidebar({
   onRequestFocus,
   onNew,
   onRenamed,
+  revealPath = null,
+  onRevealHandled,
+  dimmed = false,
+  onFocusedEntryChange,
 }: SidebarProps) {
   const [search, setSearch] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [initialized, setInitialized] = useState(false);
@@ -177,7 +188,6 @@ export default function Sidebar({
 
   const tree = buildTree(filtered);
 
-  // Initialize all folders as expanded on first render
   useEffect(() => {
     if (!initialized && tree.length > 0) {
       setExpanded(new Set(collectFolderPaths(tree)));
@@ -187,7 +197,15 @@ export default function Sidebar({
 
   const flatNodes = flattenVisible(tree, expanded);
 
-  // After clearing search / expanding ancestors, focus the resolved path
+  useEffect(() => {
+    const node = focusedIndex >= 0 ? flatNodes[focusedIndex] : null;
+    if (!node || node.isFolder) {
+      onFocusedEntryChange?.(null);
+    } else {
+      onFocusedEntryChange?.(node.path);
+    }
+  }, [focusedIndex, flatNodes, onFocusedEntryChange]);
+
   useEffect(() => {
     if (!pendingFocusPath) return;
     const idx = flatNodes.findIndex((n) => n.path === pendingFocusPath);
@@ -221,6 +239,12 @@ export default function Sidebar({
     },
     [entries, onRequestFocus]
   );
+
+  useEffect(() => {
+    if (!revealPath) return;
+    focusExactPath(revealPath);
+    onRevealHandled?.();
+  }, [revealPath, focusExactPath, onRevealHandled]);
 
   const toggleExpand = useCallback((path: string) => {
     setExpanded((prev) => {
@@ -283,10 +307,7 @@ export default function Sidebar({
     [tree]
   );
 
-  const startRename = useCallback((node: {
-    path: string;
-    name: string;
-  }) => {
+  const startRename = useCallback((node: { path: string; name: string }) => {
     setContextMenu(null);
     setRenameError(null);
     skipRenameBlurCommitRef.current = false;
@@ -347,7 +368,6 @@ export default function Sidebar({
     [renameValue, cancelRename, onRenamed]
   );
 
-  // Auto-scroll focused item into view
   useEffect(() => {
     if (focusedIndex >= 0) {
       const el = rowRefs.current.get(focusedIndex);
@@ -355,7 +375,6 @@ export default function Sidebar({
     }
   }, [focusedIndex]);
 
-  // Close context menu on outside click / escape
   useEffect(() => {
     if (!contextMenu) return;
 
@@ -377,12 +396,10 @@ export default function Sidebar({
     };
   }, [contextMenu]);
 
-  // Keyboard handler
   useEffect(() => {
     if (!focused) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      // Skip when search or rename input is focused
       if (
         document.activeElement?.tagName === "INPUT" &&
         document.activeElement?.closest("[data-sidebar]")
@@ -442,14 +459,11 @@ export default function Sidebar({
           if (!node || !node.isFolder) break;
           if (!expanded.has(node.path)) {
             toggleExpand(node.path);
-          } else {
-            // Move to first child
-            if (
-              focusedIndex + 1 < len &&
-              flatNodes[focusedIndex + 1].depth > node.depth
-            ) {
-              setFocusedIndex(focusedIndex + 1);
-            }
+          } else if (
+            focusedIndex + 1 < len &&
+            flatNodes[focusedIndex + 1].depth > node.depth
+          ) {
+            setFocusedIndex(focusedIndex + 1);
           }
           break;
         }
@@ -469,7 +483,6 @@ export default function Sidebar({
           if (current.isFolder && expanded.has(current.path)) {
             toggleExpand(current.path);
           } else if (current.parentPath) {
-            // Jump to parent folder
             const parentIdx = flatNodes.findIndex(
               (n) => n.path === current.parentPath
             );
@@ -563,10 +576,10 @@ export default function Sidebar({
             }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="min-w-0 flex-1 rounded border border-sidebar-text/50 bg-black/30 px-1 py-0 font-mono text-xs text-sidebar-text outline-none"
+          className="min-w-0 flex-1 rounded bg-black/20 px-1 py-0 font-mono text-[13px] text-[var(--color-sidebar-text)] outline-none"
         />
         {renameError && (
-          <span className="text-[10px] leading-tight text-red-200">
+          <span className="text-[10px] leading-tight text-red-700">
             {renameError}
           </span>
         )}
@@ -578,62 +591,54 @@ export default function Sidebar({
     const isFocused = focused && focusedIndex === index;
     const isSelected = !node.isFolder && selected === node.path;
     const isRenaming = renamingPath === node.path;
-
-    if (node.isFolder) {
-      const isOpen = expanded.has(node.path);
-      return (
-        <div
-          key={node.path}
-          ref={(el) => {
-            if (el) rowRefs.current.set(index, el);
-            else rowRefs.current.delete(index);
-          }}
-          className={`flex cursor-pointer items-center gap-1.5 py-[4px] font-mono text-xs leading-[14px] text-sidebar-text opacity-80 hover:opacity-100 ${
-            isFocused ? "ring-1 ring-sidebar-text" : ""
-          }`}
-          style={{
-            paddingLeft: `${node.depth * 16 + 12}px`,
-            paddingRight: "12px",
-          }}
-          onClick={() => {
-            if (isRenaming) return;
-            onRequestFocus();
-            setFocusedIndex(index);
-            toggleExpand(node.path);
-          }}
-          onContextMenu={(e) => openContextMenu(e, node, index)}
-        >
-          <span>{isOpen ? "\u25BE" : "\u25B8"}</span>
-          {isRenaming ? renderRenameInput(node) : <span>{node.name}</span>}
-        </div>
-      );
-    }
+    const indentStep = 14;
 
     return (
       <div
         key={node.path}
-        role="button"
+        role={node.isFolder ? undefined : "button"}
         tabIndex={-1}
+        data-selected={isSelected ? "true" : undefined}
+        data-focused={isFocused ? "true" : undefined}
         ref={(el) => {
           if (el) rowRefs.current.set(index, el);
           else rowRefs.current.delete(index);
         }}
-        className={`flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent py-[4px] text-left font-mono text-xs leading-[14px] hover:bg-white/10 ${
-          isSelected ? "bg-white/15 text-sidebar-text" : "text-sidebar-text/80"
-        } ${isFocused ? "ring-1 ring-sidebar-text" : ""}`}
+        className="tree-row relative flex w-full cursor-pointer items-center gap-1.5 py-[5px] text-left font-mono text-[13px] leading-[16px] text-[var(--color-sidebar-text)]"
         style={{
-          paddingLeft: `${node.depth * 16 + 12}px`,
-          paddingRight: "12px",
+          paddingLeft: `${node.depth * indentStep + 14}px`,
+          paddingRight: "14px",
         }}
         onClick={() => {
           if (isRenaming) return;
           onRequestFocus();
           setFocusedIndex(index);
-          onSelect(node.path);
+          if (node.isFolder) {
+            toggleExpand(node.path);
+          } else {
+            onSelect(node.path);
+          }
         }}
         onContextMenu={(e) => openContextMenu(e, node, index)}
       >
-        {isRenaming ? renderRenameInput(node) : node.name}
+        {Array.from({ length: node.depth }, (_, level) => (
+          <span
+            key={level}
+            aria-hidden
+            className="absolute top-0 bottom-0 w-[3px] bg-[var(--color-hierarchy)]"
+            style={{ left: `${level * indentStep + 8}px` }}
+          />
+        ))}
+        {node.isFolder && (
+          <span className="shrink-0 text-[10px] opacity-70">
+            {expanded.has(node.path) ? "\u25BE" : "\u25B8"}
+          </span>
+        )}
+        {isRenaming ? (
+          renderRenameInput(node)
+        ) : (
+          <span className="min-w-0 truncate">{node.name}</span>
+        )}
       </div>
     );
   }
@@ -641,12 +646,32 @@ export default function Sidebar({
   return (
     <div
       data-sidebar
-      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl bg-sidebar-bg text-sidebar-text"
+      className="flex h-full min-h-0 w-full flex-col text-[var(--color-sidebar-text)]"
     >
-      <div className="flex flex-col gap-[6px] border-b border-border/30 p-[15px] pt-[25px]">
+      <div
+        ref={containerRef}
+        className={`relative z-[2] min-h-0 flex-1 overflow-hidden overflow-y-auto rounded-2xl bg-[var(--color-tree-a)] transition-opacity duration-150 ${
+          dimmed ? "opacity-30" : "opacity-100"
+        }`}
+      >
+        {flatNodes.length === 0 && (
+          <div className="bg-[var(--color-tree-a)] p-[15px] text-xs text-[var(--color-sidebar-muted)]">
+            {search ? "No matches" : "No entries found"}
+          </div>
+        )}
+        {flatNodes.map((node, index) => renderRow(node, index))}
+      </div>
+
+      <div className="flex shrink-0 items-center px-1 pt-2 pb-1">
         <SearchBar
           value={search}
           onChange={setSearch}
+          active={searchActive}
+          onActiveChange={(active) => {
+            setSearchActive(active);
+            if (active) onRequestFocus();
+          }}
+          compact
           onSubmit={() => {
             if (focusExactPath(search)) return;
             onRequestFocus();
@@ -658,27 +683,16 @@ export default function Sidebar({
           }}
         />
       </div>
-      <div
-        ref={containerRef}
-        className="relative z-[2] mx-2 my-[7.5px] flex-1 overflow-y-auto rounded-lg"
-      >
-        {flatNodes.length === 0 && (
-          <div className="p-[15px] text-xs text-sidebar-text/60">
-            {search ? "No matches" : "No entries found"}
-          </div>
-        )}
-        {flatNodes.map((node, index) => renderRow(node, index))}
-      </div>
 
       {contextMenu && (
         <div
           data-context-menu
-          className="fixed z-50 min-w-[120px] overflow-hidden rounded border border-border/40 bg-bg py-1 shadow-lg"
+          className="fixed z-50 min-w-[120px] overflow-hidden rounded-lg border border-black/10 bg-[var(--color-surface)] py-1 shadow-lg"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button
             type="button"
-            className="block w-full px-3 py-1.5 text-left font-mono text-xs text-text hover:bg-hover"
+            className="block w-full px-3 py-1.5 text-left font-mono text-xs text-[var(--color-surface-text)] hover:bg-black/5"
             onClick={() => {
               startRename({
                 path: contextMenu.path,
@@ -690,7 +704,7 @@ export default function Sidebar({
           </button>
           <button
             type="button"
-            className="block w-full px-3 py-1.5 text-left font-mono text-xs text-text hover:bg-hover"
+            className="block w-full px-3 py-1.5 text-left font-mono text-xs text-[var(--color-surface-text)] hover:bg-black/5"
             onClick={() => {
               const path = contextMenu.isFolder
                 ? `${contextMenu.path}/`

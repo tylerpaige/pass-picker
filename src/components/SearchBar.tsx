@@ -5,6 +5,10 @@ interface SearchBarProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onArrowDown?: () => void;
+  /** When true, open/focus the input (Cmd+K). */
+  active?: boolean;
+  onActiveChange?: (active: boolean) => void;
+  compact?: boolean;
 }
 
 export default function SearchBar({
@@ -12,6 +16,9 @@ export default function SearchBar({
   onChange,
   onSubmit,
   onArrowDown,
+  active = false,
+  onActiveChange,
+  compact = false,
 }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -19,11 +26,13 @@ export default function SearchBar({
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "f")) {
         e.preventDefault();
-        inputRef.current?.focus();
+        onActiveChange?.(true);
+        requestAnimationFrame(() => inputRef.current?.focus());
       }
       if (e.key === "Escape" && document.activeElement === inputRef.current) {
         onChange("");
         inputRef.current?.blur();
+        onActiveChange?.(false);
       }
       if (e.key === "Enter" && document.activeElement === inputRef.current) {
         e.preventDefault();
@@ -33,15 +42,37 @@ export default function SearchBar({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onChange, onSubmit]);
+  }, [onChange, onSubmit, onActiveChange]);
+
+  useEffect(() => {
+    if (active) inputRef.current?.focus();
+  }, [active]);
+
+  if (compact && !active && !value) {
+    return (
+      <button
+        type="button"
+        className="font-mono text-[12px] text-[var(--color-sidebar-controls)]/80 transition hover:text-[var(--color-sidebar-controls)]"
+        onClick={() => {
+          onActiveChange?.(true);
+          requestAnimationFrame(() => inputRef.current?.focus());
+        }}
+      >
+        search (cmd+k)
+      </button>
+    );
+  }
 
   return (
     <input
       ref={inputRef}
       type="text"
-      placeholder="Search... (Cmd+K)"
+      placeholder="search..."
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onBlur={() => {
+        if (!value) onActiveChange?.(false);
+      }}
       onKeyDown={(e) => {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -49,7 +80,7 @@ export default function SearchBar({
           onArrowDown?.();
         }
       }}
-      className="w-full rounded border border-sidebar-text/30 bg-black/20 px-[7.5px] py-[7.5px] font-mono text-xs text-sidebar-text outline-none placeholder:text-sidebar-text/50 focus:border-sidebar-text/60"
+      className="w-full bg-transparent font-mono text-[12px] text-[var(--color-sidebar-controls)] outline-none placeholder:text-[var(--color-sidebar-controls)]/50"
     />
   );
 }
