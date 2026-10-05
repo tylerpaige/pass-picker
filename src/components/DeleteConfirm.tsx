@@ -52,8 +52,8 @@ export default function DeleteConfirm({
         </button>
       </div>
 
-      <div className="flex flex-1 gap-16 px-10 pt-6">
-        <div className="min-w-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-10 pt-6 sm:px-10">
+        <div className="mb-10">
           <div className="mb-4 font-mono text-[13px] text-[var(--color-delete-muted)]">
             delete confirmation for...
           </div>
@@ -63,11 +63,9 @@ export default function DeleteConfirm({
           />
         </div>
 
-        <div className="min-w-0 flex-1 pt-1">
-          <p className="font-mono text-[22px] font-medium leading-snug text-[var(--color-delete-text)]">
-            Are you sure you want to delete this file?
-          </p>
-        </div>
+        <p className="font-mono text-[22px] font-medium leading-snug text-[var(--color-delete-text)]">
+          Are you sure you want to delete this file?
+        </p>
       </div>
     </div>
   );

@@ -321,8 +321,8 @@ export default function EntryEditor({
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-12 overflow-y-auto px-10 pb-10 pt-4">
-        <div className="min-w-0 flex-1 overflow-hidden pr-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-10 pt-4 sm:px-10">
+        <div className="mb-8">
           <div className={`mb-4 font-mono text-[13px] ${theme.muted}`}>
             {contextLabel}
           </div>
@@ -334,7 +334,7 @@ export default function EntryEditor({
           />
         </div>
 
-        <div className="flex min-w-0 flex-[1.15] flex-col">
+        <div className="flex flex-col">
           {error && (
             <div className="text-sm text-red-300">{error}</div>
           )}

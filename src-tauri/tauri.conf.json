@@ -15,8 +15,8 @@
         "title": "Pass Picker",
         "width": 960,
         "height": 680,
-        "minWidth": 640,
-        "minHeight": 480,
+        "minWidth": 400,
+        "minHeight": 400,
         "resizable": true,
         "fullscreen": false,
         "titleBarStyle": "Overlay"

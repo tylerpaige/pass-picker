@@ -98,14 +98,14 @@ export default function PasswordGenerator({
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-12 overflow-y-auto px-10 pb-10 pt-4">
-        <div className="min-w-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-10 pt-4 sm:px-10">
+        <div className="mb-8">
           <div className="mb-4 font-mono text-[13px] text-[var(--color-edit-label)]">
             regenerate password...
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-[1.15] flex-col gap-5">
+        <div className="flex flex-col gap-5">
           <label className="flex flex-col gap-2">
             <span className="font-mono text-[13px] text-[var(--color-edit-label)]">
               Current Password

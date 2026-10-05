@@ -16,6 +16,8 @@ type FocusZone = "sidebar" | "main";
 
 const MIN_SIDEBAR = 200;
 const MAX_SIDEBAR = 560;
+const MIN_TOP_PANE = 160;
+const MIN_BOTTOM_PANE = 180;
 
 function collectFolderSuggestions(entries: string[]): string[] {
   const folders = new Set<string>();
@@ -85,6 +87,8 @@ export default function App() {
   const [focusZone, setFocusZone] = useState<FocusZone>("sidebar");
   const [deleting, setDeleting] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [topPaneHeight, setTopPaneHeight] = useState(280);
+  const [isNarrow, setIsNarrow] = useState(false);
   const [revealPath, setRevealPath] = useState<string | null>(null);
   const [sidebarFocusedEntry, setSidebarFocusedEntry] = useState<string | null>(
     null
@@ -112,6 +116,14 @@ export default function App() {
     }
 
     if (typeof window !== "undefined") computeDefaultWidth();
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
   const loadEntries = useCallback(async () => {
@@ -278,6 +290,26 @@ export default function App() {
     document.addEventListener("mouseup", onUp);
   }
 
+  function handleTopPaneResizeStart(e: ReactMouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = topPaneHeight;
+
+    function onMove(ev: MouseEvent) {
+      const max = window.innerHeight - MIN_BOTTOM_PANE;
+      const next = startH + ev.clientY - startY;
+      setTopPaneHeight(Math.min(max, Math.max(MIN_TOP_PANE, next)));
+    }
+
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
   const footerProps = {
     canNew,
     canEdit,
@@ -298,16 +330,28 @@ export default function App() {
       data-focus={focusZone}
       className="flex h-screen flex-col overflow-hidden font-mono text-[13px] leading-[15px]"
     >
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Left half — solid green */}
+      <div
+        className={`flex min-h-0 flex-1 overflow-hidden ${
+          isNarrow ? "flex-col" : "flex-row"
+        }`}
+      >
+        {/* Left / top — solid green */}
         <div
-          className="flex h-full shrink-0 flex-col bg-[var(--color-left-bg)]"
-          style={{ width: sidebarWidth }}
+          className={`flex shrink-0 flex-col bg-[var(--color-left-bg)] ${
+            isNarrow ? "w-full" : "h-full"
+          }`}
+          style={
+            isNarrow
+              ? { height: topPaneHeight }
+              : { width: sidebarWidth }
+          }
         >
           <div data-tauri-drag-region className="drag-region h-7 shrink-0" />
 
           <div
-            className="flex min-h-0 flex-1 flex-col pl-3 pr-0.5 pb-2 pt-1"
+            className={`flex min-h-0 flex-1 flex-col pb-2 pt-1 ${
+              isNarrow ? "px-3" : "pl-3 pr-0.5"
+            }`}
             onMouseDown={() => setFocusZone("sidebar")}
           >
             <div className="flex shrink-0 items-center justify-end px-1 pb-2">
@@ -338,23 +382,44 @@ export default function App() {
         </div>
 
         {/* Resize / divider */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize sidebar"
-          className="pane-divider shrink-0 cursor-col-resize self-stretch"
-          style={{
-            background: `linear-gradient(to right, var(--color-left-bg) 50%, var(--color-right-bg) 50%)`,
-          }}
-          onMouseDown={handleSidebarResizeStart}
-        />
+        {isNarrow ? (
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Resize panels"
+            className="pane-divider-horizontal shrink-0 cursor-row-resize"
+            style={{
+              background: `linear-gradient(to bottom, var(--color-left-bg) 50%, var(--color-right-bg) 50%)`,
+            }}
+            onMouseDown={handleTopPaneResizeStart}
+          />
+        ) : (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            className="pane-divider shrink-0 cursor-col-resize self-stretch"
+            style={{
+              background: `linear-gradient(to right, var(--color-left-bg) 50%, var(--color-right-bg) 50%)`,
+            }}
+            onMouseDown={handleSidebarResizeStart}
+          />
+        )}
 
-        {/* Right half — solid brown */}
-        <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-right-bg)]">
-          <div data-tauri-drag-region className="drag-region h-7 shrink-0" />
+        {/* Right / bottom — solid brown */}
+        <div
+          className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-right-bg)] ${
+            isNarrow ? "w-full" : ""
+          }`}
+        >
+          {!isNarrow && (
+            <div data-tauri-drag-region className="drag-region h-7 shrink-0" />
+          )}
 
           <div
-            className="flex min-h-0 flex-1 flex-col pl-0.5 pr-3 pb-2 pt-1"
+            className={`flex min-h-0 flex-1 flex-col pb-2 pt-1 ${
+              isNarrow ? "px-3" : "pl-0.5 pr-3"
+            }`}
             onMouseDown={() => setFocusZone("main")}
           >
             <div className="flex shrink-0 items-center px-1 pb-2">
