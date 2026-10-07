@@ -374,8 +374,9 @@ function FieldBlock({
   return (
     <div
       ref={fieldRef}
-      className={`relative flex flex-col transition-colors ${
-        focused ? "bg-[var(--color-field-focus)]" : "bg-transparent"
+      onClick={onClick}
+      className={`relative flex cursor-pointer flex-col transition-colors ${
+        focused ? "z-10 bg-[var(--color-field-focus)]" : "bg-transparent"
       }`}
       style={
         focused && coverRuleBelow
@@ -396,7 +397,7 @@ function FieldBlock({
       )}
       <div className="flex flex-col gap-2 px-4 py-5">
         <div className="flex items-baseline justify-between">
-          <span className="font-mono text-[13px] text-[var(--color-surface-muted)]">
+          <span className="font-mono text-[13px] text-[var(--color-field-label)]">
             {label}
           </span>
           {copied && (
@@ -405,13 +406,9 @@ function FieldBlock({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClick}
-          className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-datum-bg)] px-4 py-3 text-left"
-        >
+        <div className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-datum-bg)] px-4 py-3 text-left">
           {children}
-        </button>
+        </div>
       </div>
     </div>
   );

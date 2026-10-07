@@ -66,7 +66,7 @@ export default function OtpDisplay({
       )}
       <div className="flex flex-col gap-2 px-4 py-5">
         <div className="flex items-baseline justify-between">
-          <span className="font-mono text-[13px] text-[var(--color-surface-muted)]">
+          <span className="font-mono text-[13px] text-[var(--color-field-label)]">
             otp
           </span>
           {copied && (

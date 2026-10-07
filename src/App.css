@@ -50,15 +50,16 @@
   --color-sidebar-controls: #c5d4b0;
 
   /* Detail pane (show page) */
-  --color-surface: #807864;
+  --color-surface: #afa58c;
   --color-surface-text: #322e25;
-  --color-entry-title: #322e25;
+  --color-entry-title: #000000;
+  --color-field-label: #000000;
   --color-surface-muted: #524b3b;
-  --color-datum-bg: #48442f;
-  --color-datum-text: #807864;
-  --color-field-focus: #827e73;
-  --color-field-rule: #827e73;
-  --color-divider: #827e73;
+  --color-datum-bg: #3e3d23;
+  --color-datum-text: #beb5a0;
+  --color-field-focus: #b3b0ab;
+  --color-field-rule: #b3b0ab;
+  --color-divider: #b3b0ab;
   --color-pane-footer-text: #c8c4b6;
 
   /* Accents / shared */
