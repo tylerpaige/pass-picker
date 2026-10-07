@@ -152,6 +152,8 @@ interface SidebarProps {
   dimmed?: boolean;
   /** Reports the focused file entry path (null if a folder or nothing). */
   onFocusedEntryChange?: (path: string | null) => void;
+  /** Place the search bar above the tree instead of below it. */
+  searchOnTop?: boolean;
 }
 
 export default function Sidebar({
@@ -166,6 +168,7 @@ export default function Sidebar({
   onRevealHandled,
   dimmed = false,
   onFocusedEntryChange,
+  searchOnTop = false,
 }: SidebarProps) {
   const [search, setSearch] = useState("");
   const [searchActive, setSearchActive] = useState(false);
@@ -662,7 +665,11 @@ export default function Sidebar({
         {flatNodes.map((node, index) => renderRow(node, index))}
       </div>
 
-      <div className="flex shrink-0 items-center px-1 pt-2 pb-1">
+      <div
+        className={`flex shrink-0 items-center px-1 ${
+          searchOnTop ? "order-first pb-2" : "pt-2 pb-1"
+        }`}
+      >
         <SearchBar
           value={search}
           onChange={setSearch}

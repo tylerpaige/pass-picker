@@ -354,9 +354,13 @@ export default function App() {
             }`}
             onMouseDown={() => setFocusZone("sidebar")}
           >
-            <div className="flex shrink-0 items-center justify-end px-1 pb-2">
+            <div
+              className={`flex shrink-0 items-center px-1 pb-2 ${
+                isNarrow ? "justify-start" : "justify-end"
+              }`}
+            >
               <span className="font-mono text-[12px] text-[var(--color-sidebar-controls)]/80">
-                Pass
+                {isNarrow ? "Pass Picker" : "Pass"}
               </span>
             </div>
 
@@ -376,6 +380,7 @@ export default function App() {
                 onRevealHandled={() => setRevealPath(null)}
                 dimmed={leftDimmed}
                 onFocusedEntryChange={setSidebarFocusedEntry}
+                searchOnTop={isNarrow}
               />
             </div>
           </div>
@@ -422,11 +427,13 @@ export default function App() {
             }`}
             onMouseDown={() => setFocusZone("main")}
           >
-            <div className="flex shrink-0 items-center px-1 pb-2">
-              <span className="font-mono text-[12px] text-[var(--color-pane-footer-text)]/80">
-                Picker
-              </span>
-            </div>
+            {!isNarrow && (
+              <div className="flex shrink-0 items-center px-1 pb-2">
+                <span className="font-mono text-[12px] text-[var(--color-pane-footer-text)]/80">
+                  Picker
+                </span>
+              </div>
+            )}
 
             <div
               className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-[var(--color-surface)] text-[var(--color-surface-text)] transition-opacity duration-150 ${
