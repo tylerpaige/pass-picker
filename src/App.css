@@ -83,12 +83,15 @@
   --color-edit-field-focus: #3a5080;
   --color-edit-field-rule: #3a5080;
 
-  --color-new-bg: #4a6541;
-  --color-new-input: #2f4229;
+  --color-new-bg: #425a33;
+  --color-new-input: #254c28;
   --color-new-label: #b8c9ae;
-  --color-new-text: #e8f0e4;
-  --color-new-field-focus: #5a7551;
-  --color-new-field-rule: #5a7551;
+  --color-new-text: #c9e0c6;
+  --color-new-field-focus: #37654c;
+  --color-new-field-rule: #37654c;
+
+  --color-help-focus-bg: #2b9886;
+  --color-help-focus-text: #254c28;
 
   --color-delete-bg: #7a4434;
   --color-delete-text: #e8d8d0;

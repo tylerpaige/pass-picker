@@ -27,6 +27,7 @@ type FieldId =
   | "path"
   | "current"
   | "password"
+  | "generate"
   | "length"
   | "special"
   | "attributes";
@@ -94,6 +95,7 @@ export default function EntryEditor({
   const [attributes, setAttributes] = useState("");
   const [length, setLength] = useState(12);
   const [specialChars, setSpecialChars] = useState("!@#$%^&*()_");
+  const [generatorOpen, setGeneratorOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -106,10 +108,15 @@ export default function EntryEditor({
   const fieldRefs = useRef<Partial<Record<FieldId, HTMLElement | null>>>({});
 
   const fieldOrder = useMemo((): FieldId[] => {
-    return isNew
-      ? ["path", "password", "length", "special", "attributes"]
-      : ["path", "current", "password", "length", "special", "attributes"];
-  }, [isNew]);
+    return [
+      "path",
+      ...(isNew ? [] : (["current"] as FieldId[])),
+      "password",
+      "generate",
+      ...(generatorOpen ? (["length", "special"] as FieldId[]) : []),
+      "attributes",
+    ];
+  }, [isNew, generatorOpen]);
 
   function setFieldRef(id: FieldId) {
     return (el: HTMLElement | null) => {
@@ -179,6 +186,11 @@ export default function EntryEditor({
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         handleSave();
+        return;
+      }
+      if (e.key === "r" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        regenerate();
         return;
       }
 
@@ -288,6 +300,7 @@ export default function EntryEditor({
       };
 
   const contextLabel = isNew ? "new file at..." : "editing...";
+  const actionBtn = `font-mono text-[12px] ${theme.muted} opacity-80 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-35`;
   const inputClass = `w-full rounded-md ${theme.input} px-3 py-2.5 font-mono text-[14px] ${theme.text} outline-none`;
 
   if (loading && !isNew && !currentPassword) {
@@ -305,25 +318,25 @@ export default function EntryEditor({
       <div className="no-drag absolute right-6 top-4 flex items-center gap-5">
         <button
           type="button"
-          className={`font-mono text-[15px] ${theme.muted} transition hover:opacity-100 opacity-80`}
+          className={actionBtn}
           onClick={onCancel}
           disabled={loading}
         >
-          Cancel
+          Cancel (esc)
         </button>
         <button
           type="button"
-          className={`font-mono text-[15px] ${theme.muted} transition hover:opacity-100 opacity-80 disabled:opacity-40`}
+          className={actionBtn}
           onClick={handleSave}
           disabled={loading}
         >
-          {loading ? "Saving..." : "Save"}
+          {loading ? "Saving..." : "Save (cmd+enter)"}
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-10 pt-4 sm:px-10">
-        <div className="mb-8">
-          <div className={`mb-4 font-mono text-[13px] ${theme.muted}`}>
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-10 pt-4 sm:px-10 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start md:gap-10">
+        <div className="mb-8 md:sticky md:top-0 md:mb-0">
+          <div className={`mb-1 font-mono text-[13px] ${theme.muted}`}>
             {contextLabel}
           </div>
           <PathTree
@@ -462,6 +475,7 @@ export default function EntryEditor({
             label="new password"
             focused={
               focusedField === "password" ||
+              focusedField === "generate" ||
               focusedField === "length" ||
               focusedField === "special"
             }
@@ -472,7 +486,7 @@ export default function EntryEditor({
             }
             theme={theme}
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               <input
                 ref={setFieldRef("password")}
                 type="text"
@@ -486,83 +500,97 @@ export default function EntryEditor({
                 className={inputClass}
               />
 
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span>Generate with length: </span>
-                  <div
-                    className={`inline-flex items-center gap-0.5 rounded-md ${theme.input} ${theme.text}`}
-                    onFocusCapture={() => setFocusedField("length")}
-                    onBlurCapture={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        setFocusedField((f) => (f === "length" ? null : f));
-                      }
-                    }}
-                  >
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      className="px-2 py-1 opacity-70 hover:opacity-100"
-                      onClick={() =>
-                        setLength((n) => Math.max(4, n - 1))
-                      }
-                      aria-label="Decrease length"
-                    >
-                      −
-                    </button>
-                    <input
-                      ref={setFieldRef("length")}
-                      type="number"
-                      min={4}
-                      max={64}
-                      value={length}
-                      onChange={(e) => {
-                        const v = Math.max(
-                          4,
-                          Math.min(64, Number(e.target.value) || 4)
-                        );
-                        setLength(v);
-                      }}
-                      className={`w-8 bg-transparent py-1 text-center font-mono text-[13px] ${theme.text} outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      className="px-2 py-1 opacity-70 hover:opacity-100"
-                      onClick={() =>
-                        setLength((n) => Math.min(64, n + 1))
-                      }
-                      aria-label="Increase length"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>with special characters:</span>
-                  <input
-                    ref={setFieldRef("special")}
-                    type="text"
-                    value={specialChars}
-                    onChange={(e) => setSpecialChars(e.target.value)}
-                    onFocus={() => setFocusedField("special")}
-                    onBlur={() =>
-                      setFocusedField((f) => (f === "special" ? null : f))
-                    }
-                    className={`flex-1 ${inputClass}`}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
+              <button
+                ref={setFieldRef("generate")}
+                type="button"
+                aria-expanded={generatorOpen}
+                className={`-mx-1 self-start px-1 font-mono text-[13px] ${theme.label} outline-none focus:bg-[var(--color-help-focus-bg)] focus:text-[var(--color-help-focus-text)]`}
+                onClick={() => setGeneratorOpen((open) => !open)}
+                onFocus={() => setFocusedField("generate")}
+                onBlur={() =>
+                  setFocusedField((f) => (f === "generate" ? null : f))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight" && !generatorOpen) {
+                    e.preventDefault();
+                    setGeneratorOpen(true);
+                  } else if (e.key === "ArrowLeft" && generatorOpen) {
+                    e.preventDefault();
+                    setGeneratorOpen(false);
+                  }
+                }}
+              >
+                {generatorOpen ? "\u25BD" : "\u25B7"} Generate new password (cmd + r)
+              </button>
 
-                  <button
-                    type="button"
-                    className={`rounded-md ${theme.input} px-2.5 py-2.5 font-mono text-sm opacity-70 hover:opacity-100`}
-                    onClick={regenerate}
-                    title="Generate password"
-                  >
-                    Generate
-                  </button>
+              {generatorOpen && (
+                <div className="flex gap-3 pt-1">
+                  <label className="flex w-32 shrink-0 flex-col gap-1.5">
+                    <span className={`font-mono text-[12px] ${theme.label}`}>
+                      Length
+                    </span>
+                    <div
+                      className={`flex items-center justify-between rounded-md ${theme.input} ${theme.text}`}
+                      onFocusCapture={() => setFocusedField("length")}
+                      onBlurCapture={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          setFocusedField((f) => (f === "length" ? null : f));
+                        }
+                      }}
+                    >
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        className="px-3 py-2.5 opacity-70 hover:opacity-100"
+                        onClick={() => setLength((n) => Math.max(4, n - 1))}
+                        aria-label="Decrease length"
+                      >
+                        −
+                      </button>
+                      <input
+                        ref={setFieldRef("length")}
+                        type="number"
+                        min={4}
+                        max={64}
+                        value={length}
+                        onChange={(e) => {
+                          const v = Math.max(
+                            4,
+                            Math.min(64, Number(e.target.value) || 4)
+                          );
+                          setLength(v);
+                        }}
+                        className={`w-10 min-w-0 bg-transparent py-2.5 text-center font-mono text-[14px] ${theme.text} outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        className="px-3 py-2.5 opacity-70 hover:opacity-100"
+                        onClick={() => setLength((n) => Math.min(64, n + 1))}
+                        aria-label="Increase length"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </label>
+                  <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <span className={`font-mono text-[12px] ${theme.label}`}>
+                      Special characters
+                    </span>
+                    <input
+                      ref={setFieldRef("special")}
+                      type="text"
+                      value={specialChars}
+                      onChange={(e) => setSpecialChars(e.target.value)}
+                      onFocus={() => setFocusedField("special")}
+                      onBlur={() =>
+                        setFocusedField((f) => (f === "special" ? null : f))
+                      }
+                      className={inputClass}
+                    />
+                  </label>
                 </div>
-              </div>
+              )}
             </div>
           </FormField>
 
@@ -572,6 +600,7 @@ export default function EntryEditor({
             showRuleAbove
             ruleCoveredByPrevious={
               focusedField === "password" ||
+              focusedField === "generate" ||
               focusedField === "length" ||
               focusedField === "special"
             }

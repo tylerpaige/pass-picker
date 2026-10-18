@@ -174,7 +174,6 @@ export default function Sidebar({
   const [searchActive, setSearchActive] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const [initialized, setInitialized] = useState(false);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -190,13 +189,6 @@ export default function Sidebar({
     : entries;
 
   const tree = buildTree(filtered);
-
-  useEffect(() => {
-    if (!initialized && tree.length > 0) {
-      setExpanded(new Set(collectFolderPaths(tree)));
-      setInitialized(true);
-    }
-  }, [tree, initialized]);
 
   const flatNodes = flattenVisible(tree, expanded);
 
@@ -594,7 +586,10 @@ export default function Sidebar({
     const isFocused = focused && focusedIndex === index;
     const isSelected = !node.isFolder && selected === node.path;
     const isRenaming = renamingPath === node.path;
-    const indentStep = 14;
+    const indentStep = 20;
+    const rowPadLeft = 14;
+    const caretWidth = 16;
+    const hierarchyWidth = 10;
 
     return (
       <div
@@ -609,7 +604,7 @@ export default function Sidebar({
         }}
         className="tree-row relative flex w-full cursor-pointer items-center gap-1.5 py-[5px] text-left font-mono text-[13px] leading-[16px] text-[var(--color-sidebar-text)]"
         style={{
-          paddingLeft: `${node.depth * indentStep + 14}px`,
+          paddingLeft: `${node.depth * indentStep + rowPadLeft}px`,
           paddingRight: "14px",
         }}
         onClick={() => {
@@ -628,12 +623,19 @@ export default function Sidebar({
           <span
             key={level}
             aria-hidden
-            className="absolute top-0 bottom-0 w-[3px] bg-[var(--color-hierarchy)]"
-            style={{ left: `${level * indentStep + 8}px` }}
+            className="absolute top-0 bottom-0 bg-[var(--color-hierarchy)]"
+            style={{
+              // Centered under the ancestor folder's caret
+              left: `${level * indentStep + rowPadLeft + (caretWidth - hierarchyWidth) / 2}px`,
+              width: `${hierarchyWidth}px`,
+            }}
           />
         ))}
         {node.isFolder && (
-          <span className="shrink-0 text-[10px] opacity-70">
+          <span
+            className="flex shrink-0 justify-center text-[18px] leading-none opacity-70"
+            style={{ width: `${caretWidth}px` }}
+          >
             {expanded.has(node.path) ? "\u25BE" : "\u25B8"}
           </span>
         )}
