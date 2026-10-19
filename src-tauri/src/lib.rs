@@ -47,7 +47,7 @@ fn password_store_dir() -> String {
         })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn list_entries() -> Result<Vec<String>, String> {
     let store_dir = password_store_dir();
     let output = Command::new("find")
@@ -77,7 +77,7 @@ fn list_entries() -> Result<Vec<String>, String> {
     Ok(entries)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_entry(name: String) -> Result<String, String> {
     let output = pass_command()
         .arg("show")
@@ -92,7 +92,7 @@ fn get_entry(name: String) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_otp(name: String) -> Result<String, String> {
     let output = pass_command()
         .args(["otp", &name])
@@ -106,7 +106,7 @@ fn get_otp(name: String) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn insert_entry(name: String, content: String) -> Result<(), String> {
     let output = pass_command()
         .args(["insert", "-m", &name])
@@ -133,7 +133,7 @@ fn insert_entry(name: String, content: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn edit_entry(name: String, content: String) -> Result<(), String> {
     let mut child = pass_command()
         .args(["insert", "-m", "-f", &name])
@@ -159,7 +159,7 @@ fn edit_entry(name: String, content: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn delete_entry(name: String) -> Result<(), String> {
     let output = pass_command()
         .args(["rm", "-f", &name])
@@ -173,7 +173,7 @@ fn delete_entry(name: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn generate_password(name: String, length: u32) -> Result<String, String> {
     let output = pass_command()
         .args(["generate", "-f", &name, &length.to_string()])
@@ -187,7 +187,7 @@ fn generate_password(name: String, length: u32) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn rename_entry(old_name: String, new_name: String) -> Result<(), String> {
     let output = pass_command()
         .args(["mv", "-f", &old_name, &new_name])
@@ -199,7 +199,7 @@ fn rename_entry(old_name: String, new_name: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn git_pull() -> Result<(), String> {
     let output = git_command()
         .args(["pull", "--rebase"])
@@ -213,7 +213,7 @@ fn git_pull() -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn git_push() -> Result<(), String> {
     let output = git_command()
         .args(["push"])

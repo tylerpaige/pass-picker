@@ -126,9 +126,8 @@ export default function App() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const loadEntries = useCallback(async () => {
+  const refreshEntries = useCallback(async () => {
     try {
-      await gitPull().catch(() => {});
       const list = await listEntries();
       setEntries(list.sort());
       setError(null);
@@ -136,6 +135,14 @@ export default function App() {
       setError(String(err));
     }
   }, []);
+
+  // Show the local store immediately; pull from the remote in the background
+  // and refresh once it lands, so a slow network never blocks first paint.
+  const loadEntries = useCallback(async () => {
+    await refreshEntries();
+    const pulled = await gitPull().then(() => true, () => false);
+    if (pulled) await refreshEntries();
+  }, [refreshEntries]);
 
   useEffect(() => {
     loadEntries();
