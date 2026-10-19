@@ -4,6 +4,17 @@ A minimal desktop GUI for [zx2c4 pass](https://www.passwordstore.org/) built wit
 
 Pass Picker shells out to the `pass` CLI for all operations — it never touches your GPG keys or `.password-store` directly (beyond listing files).
 
+## Screenshots
+
+![A decrypted entry](docs/images/wide-record-show.png)
+
+![Exploring the file tree](docs/images/wide-file-explorer.png)
+
+![A decrypted entry with the app in its narrow display](docs/images/narrow-record-show.png)
+
+![Editing an entry and generating a new password](docs/images/wide-record-editor-password-generator.png)
+
+
 ## Features
 
 - **Tree view** of your password store with collapsible folders
