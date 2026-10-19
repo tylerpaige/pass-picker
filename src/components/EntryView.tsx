@@ -255,7 +255,7 @@ export default function EntryView({
               handleCopy("password", entry.password);
             }}
           >
-            <span className="font-mono text-[15px] tracking-widest text-[var(--color-datum-text)]">
+            <span className="min-w-0 font-mono text-[15px] tracking-widest text-[var(--color-datum-text)] [overflow-wrap:anywhere]">
               {showPassword
                 ? entry.password
                 : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
@@ -308,7 +308,7 @@ export default function EntryView({
                   handleCopy(key, value);
                 }}
               >
-                <span className="font-mono text-[15px] text-[var(--color-datum-text)]">
+                <span className="min-w-0 font-mono text-[15px] text-[var(--color-datum-text)] [overflow-wrap:anywhere]">
                   {value}
                 </span>
               </FieldBlock>
@@ -406,7 +406,7 @@ function FieldBlock({
             </span>
           )}
         </div>
-        <div className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-datum-bg)] px-4 py-3 text-left">
+        <div className="flex w-full min-w-0 items-center gap-2 rounded-xl bg-[var(--color-datum-bg)] px-4 py-3 text-left">
           {children}
         </div>
       </div>

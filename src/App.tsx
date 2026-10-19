@@ -346,7 +346,19 @@ export default function App() {
               : { width: sidebarWidth }
           }
         >
-          <div data-tauri-drag-region className="drag-region h-7 shrink-0" />
+          {/* Wide layout: title sits in the title bar, level with the window controls */}
+          <div
+            data-tauri-drag-region
+            className={`drag-region flex h-7 shrink-0 items-center ${
+              isNarrow ? "" : "justify-end pl-3 pr-0.5"
+            }`}
+          >
+            {!isNarrow && (
+              <span className="pointer-events-none px-1 font-mono text-[12px] text-[var(--color-sidebar-controls)]/80">
+                Pass
+              </span>
+            )}
+          </div>
 
           <div
             className={`flex min-h-0 flex-1 flex-col pb-2 pt-1 ${
@@ -354,15 +366,13 @@ export default function App() {
             }`}
             onMouseDown={() => setFocusZone("sidebar")}
           >
-            <div
-              className={`flex shrink-0 items-center px-1 pb-2 ${
-                isNarrow ? "justify-start" : "justify-end"
-              }`}
-            >
-              <span className="font-mono text-[12px] text-[var(--color-sidebar-controls)]/80">
-                {isNarrow ? "Pass Picker" : "Pass"}
-              </span>
-            </div>
+            {isNarrow && (
+              <div className="flex shrink-0 items-center justify-start px-1 pb-2">
+                <span className="font-mono text-[12px] text-[var(--color-sidebar-controls)]/80">
+                  Pass Picker
+                </span>
+              </div>
+            )}
 
             <div className="min-h-0 flex-1 overflow-hidden">
               <Sidebar
@@ -418,7 +428,14 @@ export default function App() {
           }`}
         >
           {!isNarrow && (
-            <div data-tauri-drag-region className="drag-region h-7 shrink-0" />
+            <div
+              data-tauri-drag-region
+              className="drag-region flex h-7 shrink-0 items-center pl-0.5 pr-3"
+            >
+              <span className="pointer-events-none px-1 font-mono text-[12px] text-[var(--color-pane-footer-text)]/80">
+                Picker
+              </span>
+            </div>
           )}
 
           <div
@@ -427,14 +444,6 @@ export default function App() {
             }`}
             onMouseDown={() => setFocusZone("main")}
           >
-            {!isNarrow && (
-              <div className="flex shrink-0 items-center px-1 pb-2">
-                <span className="font-mono text-[12px] text-[var(--color-pane-footer-text)]/80">
-                  Picker
-                </span>
-              </div>
-            )}
-
             <div
               className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-[var(--color-surface)] text-[var(--color-surface-text)] transition-opacity duration-150 ${
                 rightDimmed ? "opacity-30" : "opacity-100"
