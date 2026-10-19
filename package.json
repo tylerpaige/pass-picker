@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "demo": "scripts/demo.sh"
   },
   "keywords": [],
   "author": "",
