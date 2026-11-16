@@ -20,6 +20,7 @@ Pass Picker shells out to the `pass` CLI for all operations — it never touches
 - **Tree view** of your password store with collapsible folders
 - **Fuzzy search** with Cmd+K shortcut
 - **Decrypt & view** entries with masked password and reveal toggle
+- **Secret fields** — end a key with `!` (e.g. `pin!: 1234`) to mask it like the password
 - **Copy to clipboard** with auto-clear after 45 seconds for passwords
 - **TOTP codes** with circular countdown timer (via `pass otp`)
 - **Create, edit, and delete** entries

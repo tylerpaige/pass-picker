@@ -75,7 +75,8 @@ note: read-only CI token"
 add "finance/first-example-bank" "B4nk!ng#Secure92
 username: jordanlee
 url: https://online.firstexample.bank
-account: ****4821"
+account: ****4821
+pin!: 7305"
 
 add "finance/tax-portal" "T4x\$eason!2026
 username: JL-48213

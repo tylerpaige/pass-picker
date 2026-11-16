@@ -29,8 +29,8 @@ export default function EntryView({
   const [entry, setEntry] = useState<ParsedEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const [copiedField, setCopiedField] = useState<number | null>(null);
   const [focusedFieldIndex, setFocusedFieldIndex] = useState(0);
   const fieldRefs = useRef<Map<number, HTMLElement>>(new Map());
 
@@ -46,7 +46,7 @@ export default function EntryView({
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setShowPassword(false);
+    setRevealed(new Set());
     setShowGenerator(false);
     setFocusedFieldIndex(0);
     getEntry(entryName)
@@ -63,18 +63,29 @@ export default function EntryView({
   const fields = useMemo(() => {
     if (!entry) return [];
     return [
-      { key: "password", value: entry.password },
-      ...Object.entries(entry.fields).map(([key, value]) => ({ key, value })),
+      { key: "password", value: entry.password, hidden: true },
+      ...entry.fields,
     ];
   }, [entry]);
 
-  async function handleCopy(field: string, value: string) {
-    await copyToClipboard(value);
-    setCopiedField(field);
+  async function handleCopy(index: number) {
+    const field = fields[index];
+    if (!field) return;
+    await copyToClipboard(field.value);
+    setCopiedField(index);
     setTimeout(() => setCopiedField(null), 2000);
-    if (field === "password") {
+    if (field.hidden) {
       setTimeout(() => copyToClipboard(""), 45000);
     }
+  }
+
+  function toggleReveal(index: number) {
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   }
 
   function startEditingName() {
@@ -137,8 +148,7 @@ export default function EntryView({
 
       if (e.key === "Enter") {
         e.preventDefault();
-        const field = fields[focusedFieldIndex];
-        if (field) handleCopy(field.key, field.value);
+        handleCopy(focusedFieldIndex);
         return;
       }
 
@@ -146,13 +156,13 @@ export default function EntryView({
       switch (key) {
         case "c": {
           e.preventDefault();
-          const field = fields[focusedFieldIndex];
-          if (field) handleCopy(field.key, field.value);
+          handleCopy(focusedFieldIndex);
           break;
         }
         case "r": {
           e.preventDefault();
-          setShowPassword((v) => !v);
+          // Reveal the focused secret field, falling back to the password
+          toggleReveal(fields[focusedFieldIndex]?.hidden ? focusedFieldIndex : 0);
           break;
         }
         case "g": {
@@ -199,8 +209,6 @@ export default function EntryView({
 
   if (!entry) return null;
 
-  const extraFields = Object.entries(entry.fields);
-
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pb-6 pt-2">
@@ -240,80 +248,57 @@ export default function EntryView({
         </div>
 
         <div className="flex flex-col">
-          <FieldBlock
-            label="password"
-            focused={focused && focusedFieldIndex === 0}
-            copied={copiedField === "password"}
-            showRuleAbove={false}
-            coverRuleBelow
-            fieldRef={(el) => {
-              if (el) fieldRefs.current.set(0, el);
-              else fieldRefs.current.delete(0);
-            }}
-            onClick={() => {
-              setFocusedFieldIndex(0);
-              handleCopy("password", entry.password);
-            }}
-          >
-            <span className="min-w-0 font-mono text-[15px] tracking-widest text-[var(--color-datum-text)] [overflow-wrap:anywhere]">
-              {showPassword
-                ? entry.password
-                : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-            </span>
-            <div className="ml-auto flex items-center gap-1.5">
-              <button
-                type="button"
-                className="rounded px-1.5 py-0.5 font-mono text-xs text-[var(--color-datum-text)]/70 hover:text-[var(--color-datum-text)]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowGenerator(true);
-                }}
-                title="Regenerate password (g)"
-              >
-                {"\u21BB"}
-              </button>
-              <button
-                type="button"
-                className="rounded px-1.5 py-0.5 font-mono text-xs text-[var(--color-datum-text)]/70 hover:text-[var(--color-datum-text)]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPassword(!showPassword);
-                }}
-                title={showPassword ? "Hide (r)" : "Reveal (r)"}
-              >
-                {showPassword ? "\u25C9" : "\u25CE"}
-              </button>
-            </div>
-          </FieldBlock>
-
-          {extraFields.map(([key, value], i) => {
-            const fieldIndex = i + 1;
-            return (
-              <FieldBlock
-                key={key}
-                label={key}
-                focused={focused && focusedFieldIndex === fieldIndex}
-                copied={copiedField === key}
-                showRuleAbove
-                coverRuleBelow
-                ruleCoveredByPrevious={
-                  focused && focusedFieldIndex === fieldIndex - 1
-                }
-                fieldRef={(el) => {
-                  if (el) fieldRefs.current.set(fieldIndex, el);
-                  else fieldRefs.current.delete(fieldIndex);
-                }}
-                onClick={() => {
-                  setFocusedFieldIndex(fieldIndex);
-                  handleCopy(key, value);
-                }}
-              >
+          {fields.map((field, fieldIndex) => (
+            <FieldBlock
+              key={fieldIndex}
+              label={field.key}
+              focused={focused && focusedFieldIndex === fieldIndex}
+              copied={copiedField === fieldIndex}
+              showRuleAbove={fieldIndex > 0}
+              coverRuleBelow
+              ruleCoveredByPrevious={
+                focused && focusedFieldIndex === fieldIndex - 1
+              }
+              fieldRef={(el) => {
+                if (el) fieldRefs.current.set(fieldIndex, el);
+                else fieldRefs.current.delete(fieldIndex);
+              }}
+              onClick={() => {
+                setFocusedFieldIndex(fieldIndex);
+                handleCopy(fieldIndex);
+              }}
+            >
+              {field.hidden ? (
+                <>
+                  <span className="min-w-0 font-mono text-[15px] tracking-widest text-[var(--color-datum-text)] [overflow-wrap:anywhere]">
+                    {revealed.has(fieldIndex)
+                      ? field.value
+                      : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    {fieldIndex === 0 && (
+                      <IconButton
+                        onClick={() => setShowGenerator(true)}
+                        title="Regenerate password (g)"
+                      >
+                        {"\u21BB"}
+                      </IconButton>
+                    )}
+                    <IconButton
+                      onClick={() => toggleReveal(fieldIndex)}
+                      title={revealed.has(fieldIndex) ? "Hide (r)" : "Reveal (r)"}
+                    >
+                      {revealed.has(fieldIndex) ? "\u25C9" : "\u25CE"}
+                    </IconButton>
+                  </div>
+                </>
+              ) : (
                 <span className="min-w-0 font-mono text-[15px] text-[var(--color-datum-text)] [overflow-wrap:anywhere]">
-                  {value}
+                  {field.value}
                 </span>
-              </FieldBlock>
-            );
-          })}
+              )}
+            </FieldBlock>
+          ))}
         </div>
 
         <OtpDisplay
@@ -335,7 +320,7 @@ export default function EntryView({
               const updatedRaw = lines.join("\n");
               await editEntry(entryName, updatedRaw);
               setEntry(parseEntry(updatedRaw));
-              setShowPassword(false);
+              setRevealed(new Set());
               setShowGenerator(false);
               setError(null);
             } catch (err) {
@@ -347,6 +332,30 @@ export default function EntryView({
         />
       )}
     </div>
+  );
+}
+
+function IconButton({
+  children,
+  onClick,
+  title,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="-my-1 flex h-7 w-7 items-center justify-center rounded font-mono text-[20px] leading-none text-[var(--color-datum-text)]/70 hover:text-[var(--color-datum-text)]"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      title={title}
+    >
+      {children}
+    </button>
   );
 }
 

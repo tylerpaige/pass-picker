@@ -54,25 +54,35 @@ export async function copyToClipboard(text: string): Promise<void> {
   await writeText(text);
 }
 
+export interface EntryField {
+  key: string;
+  value: string;
+  hidden: boolean;
+}
+
 export interface ParsedEntry {
   password: string;
-  fields: Record<string, string>;
+  fields: EntryField[];
   raw: string;
 }
 
+// A trailing "!" on a key (e.g. "pin!: 1234") marks the field as secret:
+// it's masked like the password and the "!" is dropped from its label.
 export function parseEntry(raw: string): ParsedEntry {
   const lines = raw.split("\n");
   const password = lines[0] || "";
-  const fields: Record<string, string> = {};
+  const fields: EntryField[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
     const colonIdx = line.indexOf(":");
     if (colonIdx > 0) {
-      const key = line.slice(0, colonIdx).trim();
+      let key = line.slice(0, colonIdx).trim();
       const value = line.slice(colonIdx + 1).trim();
-      fields[key] = value;
+      const hidden = key.length > 1 && key.endsWith("!");
+      if (hidden) key = key.slice(0, -1).trimEnd();
+      fields.push({ key, value, hidden });
     }
   }
 

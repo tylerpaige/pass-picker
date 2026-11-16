@@ -132,7 +132,7 @@ export default function PasswordGenerator({
               />
               <button
                 type="button"
-                className="rounded-md bg-[var(--color-edit-input)] px-2.5 py-2.5 font-mono text-sm opacity-70 hover:opacity-100"
+                className="flex items-center self-stretch rounded-md bg-[var(--color-edit-input)] px-3 font-mono text-[20px] leading-none opacity-70 hover:opacity-100"
                 onClick={regenerate}
                 title="Regenerate"
               >
